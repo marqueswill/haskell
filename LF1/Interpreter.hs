@@ -25,9 +25,14 @@ eval context x = case x of
     EInt n         -> ValorInt n
     EVar id        -> lookup context  id
     -- Pattern match booleano
-    EIf exp expT expE -> if ( i (eval context exp) /= 0) 
-                            then eval context expT
-                            else eval context expE
+    EIf exp expT expE -> case eval context exp of 
+                          ValorInt  v -> if v /= 0
+                                          then eval context expT
+                                          else eval context expE
+                          -- ValorBool v -> if v
+                          --                 then eval context expT
+                          --                 else eval context expE
+
     ECall id lexp   -> eval (paramBindings++contextFunctions) exp 
                           where ValorFun (Fun _ decls exp) = lookup context id
                                 paramBindings = zip decls (map (eval context) lexp)
@@ -38,7 +43,7 @@ eval context x = case x of
 
 
 data Valor = ValorInt {
-               i :: Integer         
+               i :: Integer
              }
             | 
              ValorFun {
