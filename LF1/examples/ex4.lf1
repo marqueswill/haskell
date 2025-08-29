@@ -1,7 +1,7 @@
 main () {
-  fat(5)
+  mais2(5)
 }
 
-fat(n) {
-  if (n) then n * fat(n-1) else 1
+mais2(n) {
+  n + 2
 }
