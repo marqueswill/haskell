@@ -3,5 +3,5 @@ main () {
 }
 
 fat(n) {
-  if (n) then n * fat(n-1) else 1
+  if (n) then (n * fat(n-1)) else 1
 }

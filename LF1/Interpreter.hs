@@ -4,7 +4,6 @@ import AbsLF
 import Prelude hiding (lookup)
 
 executeP :: Program -> Valor
-
 executeP (Prog fs) =  eval (updatecF [] fs) (expMain fs)
     where expMain ((Fun (Ident "main") decls exp):xs) = exp
           expMain ( _ :xs) = expMain xs
@@ -25,12 +24,13 @@ eval context x = case x of
     EFalse         -> ValorBool False
     EInt n         -> ValorInt n
     EVar id        -> lookup context  id
+    -- Pattern match booleano
     EIf exp expT expE -> if ( i (eval context exp) /= 0) 
                             then eval context expT
                             else eval context expE
     ECall id lexp   -> eval (paramBindings++contextFunctions) exp 
                           where ValorFun (Fun _ decls exp) = lookup context id
-                                paramBindings = zip decls (map (eval contextFunctions) lexp)
+                                paramBindings = zip decls (map (eval context) lexp)
                                 contextFunctions = filter isFunct context
                                 isFunct (_,v) = case v of
                                                   ValorFun _ -> True
