@@ -31,11 +31,10 @@ eval context x = case x of
     ECall id lexp   -> eval (paramBindings++contextFunctions) exp 
                           where ValorFun (Fun _ decls exp) = lookup context id
                                 paramBindings = zip decls (map (eval contextFunctions) lexp)
-                                contextFunctions = filter (\(i,v) -> case v of 
-                                                                         ValorFun _ -> True 
-                                                                         _ -> False
-                                                           ) 
-                                                          context
+                                contextFunctions = filter isFunct context
+                                isFunct (_,v) = case v of
+                                                  ValorFun _ -> True
+                                                  _ -> False
 
 
 data Valor = ValorInt {
