@@ -14,7 +14,7 @@ Nota��o:
 3) compilar o driver (main) do interpretador 
   ==> ghc --make Interpret.hs
 
-4) testar o execut�vel com exemplos:
+4) testar o executável com exemplos:
   ==> ./Interpret < examples/ex1.li3
 
 ** Passos preliminares (feito pelo professor)

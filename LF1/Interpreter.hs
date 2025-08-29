@@ -7,7 +7,7 @@ executeP :: Program -> Valor
 
 executeP (Prog fs) =  eval (updatecF [] fs) (expMain fs)
     where expMain ((Fun (Ident "main") decls exp):xs) = exp
-          expMain ( _ :xs) = expMain xs                                            
+          expMain ( _ :xs) = expMain xs
   
 
 eval :: RContext -> Exp -> Valor
@@ -36,13 +36,7 @@ eval context x = case x of
                                                                          _ -> False
                                                            ) 
                                                           context
-{- ATENCAO: O CÓDIGO ABAIXO ESTÁ COMENTADO PORQUE O CONTEXTO PASSADO NA CHAMADA DE "execute"
-   TEM VARIAVEIS LOCAIS DA FUNCAO QUE ESTA FAZENDO A CHAMADA, O QUE GERA ACOPLAMENTO INDESEJADO ENTRE FUNCOES
-    Call id lexp   -> lookup (execute (paramBindings++context) (SBlock stms)) 
-                             (Ident "return")
-                          where ValorFun (Fun _ decls stms) = lookup context id
-                                paramBindings = zip decls (map (eval context) lexp)
--}  
+
 
 data Valor = ValorInt {
                i :: Integer         
