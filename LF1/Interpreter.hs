@@ -3,25 +3,12 @@ module Interpreter where
 import AbsLF
 import Prelude hiding (lookup)
 
-executeP :: Program -> RContext
+executeP :: Program -> Valor
 
-executeP (Prog fs) =  execute (updatecF [] fs) ( SBlock (stmMain fs))
-    where stmMain ((Fun (Ident "main") decls stms):xs) = stms
-          stmMain ( _ :xs) = stmMain xs                                            
-   
-execute :: RContext -> Stm -> RContext
-execute context x = case x of
-   SAss id exp -> update context id (eval context exp)
-   SBlock [] -> context
-   SBlock (s:stms) -> execute (execute context s) (SBlock stms) 
-   SWhile exp stm -> if ( i (eval context exp) /= 0) 
-                      then execute (execute context stm) (SWhile exp stm)
-                      else context
-   SReturn exp ->  update context  (Ident "return")  (eval context exp)
-   SIf exp stmT stmE -> if ( i (eval context exp) /= 0) 
-                          then execute context stmT
-                          else execute context stmE
-
+executeP (Prog fs) =  eval (updatecF [] fs) (expMain fs)
+    where expMain ((Fun (Ident "main") decls exp):xs) = exp
+          expMain ( _ :xs) = expMain xs                                            
+  
 
 eval :: RContext -> Exp -> Valor
 eval context x = case x of
@@ -38,10 +25,12 @@ eval context x = case x of
     EFalse         -> ValorBool False
     EInt n         -> ValorInt n
     EVar id        -> lookup context  id
-    Call id lexp   -> lookup (execute (paramBindings++contextFunctions) (SBlock stms)) 
-                             (Ident "return")
-                          where ValorFun (Fun _ decls stms) = lookup context id
-                                paramBindings = zip decls (map (eval context) lexp)
+    EIf exp expT expE -> if ( i (eval context exp) /= 0) 
+                            then eval context expT
+                            else eval context expE
+    ECall id lexp   -> eval (paramBindings++contextFunctions) exp 
+                          where ValorFun (Fun _ decls exp) = lookup context id
+                                paramBindings = zip decls (map (eval contextFunctions) lexp)
                                 contextFunctions = filter (\(i,v) -> case v of 
                                                                          ValorFun _ -> True 
                                                                          _ -> False
@@ -93,4 +82,4 @@ update ((i,v):cs) s nv
 
 updatecF :: RContext -> [Function] -> RContext
 updatecF c [] = c
-updatecF c (f@(Fun id params stms):fs) = updatecF (update c id (ValorFun f)) fs
+updatecF c (f@(Fun id params exp):fs) = updatecF (update c id (ValorFun f)) fs
