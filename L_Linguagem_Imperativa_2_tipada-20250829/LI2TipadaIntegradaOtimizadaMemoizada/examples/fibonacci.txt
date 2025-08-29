@@ -1,0 +1,12 @@
+int main () {
+  int x = fibo (3000);  
+  return x;
+}
+
+int fibo (int n) {
+ if (n)
+   then if (n-1)
+          then return fibo(n-1) + fibo (n-2); 
+          else return 1;
+   else return 1;
+ }
