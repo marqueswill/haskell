@@ -1,0 +1,7 @@
+main () {
+ z = 1;
+ w = "hello";
+ v = "world";
+ a = w ++ v;
+ return a;
+}

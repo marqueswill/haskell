@@ -1,0 +1,8 @@
+main () {
+ a = true;
+ b = false;
+ e = true;
+ d = !a || b && e;
+ f = a && b || ! e;
+
+}

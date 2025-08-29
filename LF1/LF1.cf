@@ -1,0 +1,29 @@
+Prog. Program  ::= [Function] ;
+Fun. Function ::= Ident "(" [Ident] ")" "{" Exp "}" ;
+
+comment "//" ;
+comment "/*" "*/" ;
+
+terminator Function "" ;
+separator  Ident "," ;
+separator  Exp "," ;
+
+EIf.  Exp ::= "if" "(" Exp ")" "then" Exp "else" Exp;
+EOr.  Exp1 ::= Exp1 "||" Exp2 ;
+EAnd. Exp2 ::= Exp2 "&&" Exp3 ;
+ENot. Exp3 ::= "!" Exp3 ;
+ECon. Exp4  ::= Exp4  "++" Exp5 ;
+EAdd. Exp4  ::= Exp4  "+" Exp5 ;
+ESub. Exp4  ::= Exp4  "-" Exp5 ;
+EMul. Exp5  ::= Exp5 "*" Exp6 ;
+EDiv. Exp5  ::= Exp5 "/" Exp6 ;
+ECall. Exp6  ::= Ident "(" [Exp] ")" ;
+EInt. Exp7  ::= Integer ;
+EVar. Exp7  ::= Ident ;
+EStr. Exp7  ::= String ;
+ETrue. Exp7 ::= "true" ;
+EFalse. Exp7 ::= "false" ;
+
+
+coercions Exp 7 ;
+
