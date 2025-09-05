@@ -59,7 +59,8 @@ tke tc exp tp = let r = tinf tc exp in
 
 
 {- "tinf" é uma função que dado, um contexto de tipos e uma expressão, retorna
-   o tipo dessa expressão ou um erro se a expressão for mal tipada -}                                    
+   o tipo dessa expressão ou um erro se a expressão for mal tipada -}
+-- Ele é tal qual o "eval", com chamada recursi                               
 tinf :: TContext -> Exp -> R Type
 tinf tc x  =  case x of
     ECon exp0 exp  -> combChecks tc exp0 exp TStr

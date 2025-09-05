@@ -3,10 +3,23 @@ module Interpreter where
 import AbsLF
 import Prelude hiding (lookup)
 
+{- TODO: Estude a definição do tipo Function no arquivo AbsLF.hs e complete as definicoes 
+    de "getParams" e "getExp" abaixo. Note "getName" já é fornecida.         
+-}
+getName :: Function -> Ident
+getName (Fun name _ _) = name
+
+getParams :: Function -> [Ident]
+getParams (Fun _ params _) = params
+
+getExp :: Function -> Exp
+getExp (Fun _ _ exp) = exp
+
 executeP :: Program -> Valor
 executeP (Prog fs) =  eval (updatecF [] fs) (expMain fs)
-    where expMain ((Fun (Ident "main") decls exp):xs) = exp
-          expMain ( _ :xs) = expMain xs
+    where expMain (f:xs)
+              | getName f == Ident "main" =  getExp f
+              | otherwise = expMain xs
   
 
 eval :: RContext -> Exp -> Valor
@@ -33,13 +46,15 @@ eval context x = case x of
                           --                 then eval context expT
                           --                 else eval context expE
 
-    ECall id lexp   -> eval (paramBindings++contextFunctions) exp 
-                          where ValorFun (Fun _ decls exp) = lookup context id
-                                paramBindings = zip decls (map (eval context) lexp)
-                                contextFunctions = filter isFunct context
-                                isFunct (_,v) = case v of
-                                                  ValorFun _ -> True
-                                                  _ -> False
+    ECall id lexp   -> eval (paramBindings ++ contextFunctions) (getExp funDef)
+                          where (ValorFun funDef) = lookup context id
+                                parameters =  getParams funDef
+                                paramBindings = zip parameters (map (eval context) lexp)
+                                contextFunctions = filter (\(i,v) -> case v of
+                                                                         ValorFun _ -> True
+                                                                         _ -> False
+                                                           )
+                                                          context
 
 
 data Valor = ValorInt {
