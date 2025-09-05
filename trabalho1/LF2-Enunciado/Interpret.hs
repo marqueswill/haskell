@@ -3,7 +3,7 @@ module Main where
 import LexLF
 import ParLF
 import AbsLF
-import Typechecer 
+import Typechecker 
 import Optimizer
 import Interpreter 
 import PrintLF
