@@ -28,14 +28,15 @@ int fat (int n)
 test1 = Prog [Fun Tint (Ident "main") [] (ECall (Ident "fat") [EInt 5]),Fun Tint (Ident "fat") [Dec Tint (Ident "n")] (EIf (EVar (Ident "n")) (EMul (EVar (Ident "n")) (ECall (Ident "fat") [ESub (EVar (Ident "n")) (EInt 1)])) (EInt 1))]
 test2 = Prog [Fun Tint (Ident "main") [] (ECall (Ident "fat") [EAdd (EInt 5) (EInt 1)]),Fun Tint (Ident "fat") [Dec Tint (Ident "n")] (EIf (EVar (Ident "n")) (EMul (EVar (Ident "n")) (ECall (Ident "fat") [ESub (EVar (Ident "n")) (EInt 1)])) (EInt 1))]
 
-typeCheckP :: Program  -> [R TContext]
+typeCheckP :: Program  -> [R TContext] -- Retorna uma lista de contextos das funções, cada um fala o tipo da função e o tipo dos seus parametros e args
 typeCheckP (Prog fs) = let nCtx = updatecF [] fs in
                           case nCtx of
                              OK ctx -> map (typeCheckF ctx) fs
                              Erro msg -> [Erro msg]
 
 {- TODO: na definição de "typeCheckF" abaixo,substitua "undefined" 
-         pelo argumento relevante -}                                                
+         pelo argumento relevante -}
+-- Define o escopo para verificação da expressão que abstrai a função. O contexto da função tem os argumentos usados na expressão, e outras funções que existem nela.                           
 typeCheckF ::  TContext -> Function -> R TContext    
 typeCheckF tc (Fun tR _ decls exp) = tke (parameterTypeBindings ++ functionTypes) exp tR                  -- O contexto de tipos para função é criado para cada chamada do typeCheckF, assim não há conflito de argumentos com as demais funções
                                         where parameterTypeBindings = map (\(Dec tp id) -> (id,tp)) decls -- Retorna uma lista dos parâmetros e seus tipos
@@ -52,7 +53,7 @@ tke :: TContext -> Exp -> Type -> R TContext
 tke tc exp tp = let r = tinf tc exp in  -- Faz a inferência de tipo da expressão passada
                           case r of
                              OK tipo -> if (tipo == tp) -- Compara o tipo inferido com o tipo esperado
-                                           then OK tc
+                                           then OK tc   -- Se tudo tá ok, o contexto até aqui também está ok.
                                            else Erro ("@typechecker: a expressao "++ printTree exp ++ " tem tipo " ++ 
                                                      printTree tipo ++ " mas o tipo esperado eh "
                                                      ++ printTree tp)
@@ -98,18 +99,19 @@ tinf tc x  =  case x of
 -- Se baterem, verifica se os argumentos estão de acordo com o tipo dos paramentros 
     ECall id lexp   -> let r = lookup tc id in -- Procura a função no contexto de tipos
                         case r of 
-                           OK (TFun tR pTypes) -> if (length pTypes == length lexp) -- Se encontrar a função, compara a quant de parametros e argumentos
+                           OK (TFun tR pTypes) -> if (length pTypes == length lexp) -- Se encontrar a função e seu tipo está correto, compara a quant de parametros e argumentos
                                                     then 
                                                       if (isThereError tksArgs /= [])
                                                         then Erro " @typechecker: chamada de funcao invalida"
                                                         else OK tR
                                                       else Erro " @typechecker: tamanhos diferentes de lista de argumentos e parametros"
-                                                         where tksArgs = zipWith (tke tc) lexp pTypes
-                                                               isThereError l = filter (==False) 
-                                                                                       (map (\e->(let r2 = e in  
-                                                                                                    case r2 of
-                                                                                                      OK _ -> True
-                                                                                                      Erro _ -> False)) 
+
+                                                      where tksArgs = zipWith (tke tc) lexp pTypes -- Checa os tipos dos argumentos e parâmetros
+                                                            isThereError l = filter (==False)  
+                                                                                    (map (\e->(let r2 = e in  
+                                                                                                case r2 of
+                                                                                                  OK _ -> True
+                                                                                                  Erro _ -> False)) 
                                                                                          l)
                            Erro msg -> Erro msg
 
