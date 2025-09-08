@@ -7,5 +7,5 @@ quadruple(y) {
 }
 
 main() {
-  quadruple(3)
+  quadruple(10)
 }
