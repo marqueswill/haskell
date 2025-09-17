@@ -33,8 +33,6 @@ optimizeE exp  = case exp of
                                              if ((isLiteral optExp0) && (isLiteral optExp)) 
                                                then wrapValueExpression (eval [] optEAdd)
                                                else optEAdd
--- TODO: substitua "undefined" abaixo pela otimização correspondente ao tipo de expressão.
--- @dica: estude a implementação fornecida da otimização das expressões anteriores
                       ESub exp0 exp -> let optExp0 = optimizeE exp0
                                            optExp  = optimizeE exp  
                                            optESub = ESub optExp0 optExp in 
@@ -65,10 +63,7 @@ optimizeE exp  = case exp of
                                              if ((isLiteral optExp0) && (isLiteral optExp)) 
                                                then wrapValueExpression (eval [] optEAnd)
                                                else optEAnd
-                                               
--- TODO: saiba explicar o motivo da otimização abaixo 					  
                       ECall id lexp   -> ECall id (map (\expr ->  optimizeE expr) lexp) 
--- TODO: crie um programa exemplo em que a otimização abaixo seja usada
                       EIf exp expT expE -> let optExp  = optimizeE exp 
                                                optThen = optimizeE expT
                                                optElse = optimizeE expE 
