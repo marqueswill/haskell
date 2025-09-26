@@ -1,0 +1,8 @@
+
+int soma (int a , int b, int c) {
+  a + b + c
+}
+
+(int, int -> int) main() {
+  soma (2)
+}

@@ -1,0 +1,4 @@
+
+int main() {
+  (lambda int x -> 2 * x) ( (lambda int x -> x + 2) (5+1) )
+}

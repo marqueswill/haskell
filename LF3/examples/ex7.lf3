@@ -1,0 +1,11 @@
+int double(int x) {
+  x + x
+}
+
+(int,int) doubleF ( (int,int) f ) {
+  lambda int a -> 2 * (f (a))
+}
+
+int main() {
+  (doubleF(double)) (4)
+}

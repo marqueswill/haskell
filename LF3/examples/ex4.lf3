@@ -1,0 +1,8 @@
+
+(int,int) addNum (int n) {
+   (lambda int x -> n + x)  
+}
+
+int main() {
+  (addNum (2)) (3)
+}

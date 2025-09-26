@@ -1,9 +1,0 @@
-int sum(int n) {
-  if (n) 
-    then (n + sum(n - 1)) 
-	else 0
-}
-
-int main() {
-  sum(100 - 90 + 10 - 20 + sum(5) - 5) 
-}
