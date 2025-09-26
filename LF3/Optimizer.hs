@@ -1,9 +1,7 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant bracket" #-}
 module Optimizer where
 
-import LF3.AbsLF
-import LF3.Interpreter
+import AbsLF
+import Interpreter
 
 optimizeP :: Program -> Program
 optimizeP (Prog fs) = Prog (map optimizeF fs)

@@ -1,11 +1,11 @@
-Notação:
-"=>" edição de arquivo
-"==>" execução de comando no prompt do sistema operacional
+Nota��o:
+"=>" edi��o de arquivo
+"==>" execu��o de comando no prompt do sistema operacional
 
 
 ** Passos principais (requerido no curso, feito pelo aluno)
 
-1) estudar a sintaxe abstrata, ou seja, o(s) tipo(s) algébrico(s) com a estrutura da linguagem 
+1) estudar a sintaxe abstrata, ou seja, o(s) tipo(s) alg�brico(s) com a estrutura da linguagem 
   => arquivo "AbsLI.hs"
 
 2) definir/editar o interpretador com base na sintaxe abstrata 

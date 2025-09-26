@@ -1,10 +1,7 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant bracket" #-}
-{-# HLINT ignore "Use foldl" #-}
 module Interpreter where
 
-import LF3.AbsLF
-import LF3.AbsLFAux -- TODO: leia agora o conteudo desse arquivo (AbsLFAux.hs) e explique por que refatoramos assim
+import AbsLF
+import AbsLFAux  -- TODO: leia agora o conteudo desse arquivo (AbsLFAux.hs) e explique por que refatoramos assim 
 import Prelude hiding (lookup)
 
 

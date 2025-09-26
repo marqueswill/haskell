@@ -1,8 +1,8 @@
 module Typechecer where
 
-import LF3.AbsLF
+import AbsLF
 import Prelude hiding (lookup)
-import LF3.PrintLF
+import PrintLF
 
 data R a = OK a | Erro String                                   
          deriving (Eq, Ord, Show, Read)
