@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 module Main where
 
 import LexLF
@@ -18,15 +20,10 @@ main = do
 calc soureCode = 
   let parserResult = pProgram (myLexer soureCode) in 
     case parserResult of
-       Ok ast -> let typeCheckResult = typeCheckP ast in 
-                     if (any isError typeCheckResult)  
-                        then (show (filter isError typeCheckResult))  
+      Ok ast -> let typeCheckResult = typeCheckP ast in 
+                     if (any isError typeCheckResult) then (show (filter isError typeCheckResult))  
                         else let optProgram = optimizeP ast in 
                                    ">>>>>>> Programa original:<<<<<<< \n"  ++ (printTree ast)++ "\n" ++
                                    ">>>>>>> Programa otimizado:<<<<<<< \n" ++ (printTree optProgram) ++ "\n" ++ 
                                    ">>>>>>> Resultado da execucao:<<<<<<< \n" ++ (show (executeP optProgram))
-       Bad erorMessage -> erorMessage
-
-  
-
-  
+      Bad erorMessage -> erorMessage

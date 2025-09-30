@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Redundant ==" #-}
 module Typechecer where
 
 import AbsLF
@@ -31,7 +34,7 @@ typeCheckF tc (Fun tR _ decls exp) = tke (parameterTypeBindings ++ functionTypes
 tke :: TContext -> Exp -> Type -> R TContext
 tke tc exp tp = let r = tinf tc exp in
                           case r of
-                             OK tipo -> if (tipo == tp )
+                             OK tipo -> if (tipo == tp)
                                            then OK tc
                                            else Erro ("@typechecker: a expressao "++ printTree exp ++ " tem tipo " ++ 
                                                      printTree tipo ++ " mas o tipo esperado eh "
@@ -69,40 +72,61 @@ tinf tc x  =  case x of
                                                Erro msg -> Erro (msg ++ " na expressao: " ++ printTree eIf)
                                    Erro msg -> Erro (msg ++ " na expressao: " ++ printTree eIf)
                                    
-    {- TODO: 1)completar abaixo trocando undefined pelo retorno apropriado 
-             2) explicar o argumento de tinf abaixo
-    -}
+    -- DONE?: 1) completar abaixo trocando undefined pelo retorno apropriado 
+    -- DONE?: 2) explicar o argumento de tinf abaixo
     ELambda params exp -> case (tinf (parameterTypeBindings ++ tc) exp) of  
-                            OK tExp -> undefined
+                            OK tExp -> OK tExp
                             Erro msg -> Erro msg
+                           {- Extraio os pares (tipo, nome) da lista de parâmetros da função lambda para serem usados no contexto de tipos local da expressão lambda -}
                            where parameterTypeBindings = map (\(Dec tp id) -> (id,tp)) params
 
-    {- TODO: 1)completar abaixo trocando undefined pelo retorno apropriado 
-             2) fazer as explicacoes necessarias
-    -}    
+    -- DONE?: 1) completar abaixo trocando undefined pelo retorno apropriado 
+    -- DONE?: 2) fazer as explicacoes necessarias        
     ECall exp lexp  -> case (tinf tc exp) of  
-                        OK (TFun tR pTypes) -> if (length pTypes >= length lexp) -- TODO explicar >=
-                                                 then 
-                                                   if (isThereError tksArgs /= [])
-                                                    then Erro " @typechecker: tipo incompativel entre argumento e parametro"
-                                                    else if (length pTypes > length lexp)  -- TODO o que isso testa ?
-                                                          then undefined
-                                                          else OK tR
-                                                 else Erro " @typechecker: mais argumentos que parametros"
-                                               where tksArgs = zipWith (tke tc) lexp pTypes
-                                                     isThereError l = filter (==False) 
-                                                                             (map (\e->(let r2 = e in  
-                                                                                            case r2 of
-                                                                                              OK _ -> True
-                                                                                              Erro _ -> False)) l)
+                        OK (TFun tR pTypes) ->  if (length pTypes >= length lexp) then   -- DONE ==> Verifica se o número de argumentos é menor (aplicação parcial) ou igual (aplicação total) ao número de parâmetros da função
+                                                    if (isThereError tksArgs /= []) then -- Se tiver mais argumentos que parâmetros lanço erro
+                                                      Erro " @typechecker: tipo incompativel entre argumento e parametro"
+                                                    else 
+                                                      if (length pTypes > length lexp)      -- DONE: O que isso testa? ==> Verifica se o número de parâmetro é maior que o de argumentos
+                                                        then OK (TFun tR partialParamTypes) -- Se eu tenho menos argumnetos que parâmetros, eu retorna o tipo da função parcial que será gerada (aplicação parcial)
+                                                        else OK tR                          -- Caso contrário, retorna o tipo da função (aplicação total)
+
+                                                else Erro " @typechecker: mais argumentos que parametros"
+
+                                                where tksArgs = zipWith (tke tc) lexp pTypes
+                                                      isThereError l = filter (==False) 
+                                                                              (map (\e->(let r2 = e in  
+                                                                                              case r2 of
+                                                                                                OK _ -> True
+                                                                                                Erro _ -> False)) l)
+                                                      start = length lexp
+                                                      end = length pTypes
+                                                      partialParamTypes = take (end - start + 1) (drop start pTypes)
+                                                      {-  Exemplo: 
+                                                          f :: Integer -> Integer -> Integer -> Integer
+                                                          f a b c = a + b + c
+
+                                                          f 2 vai gerar uma função 'g' onde
+                                                          g :: Integer -> Integer -> Integer
+                                                          g b c = 2 + b + c
+
+                                                          Ou seja, o tipo de retorno é o mesmo que o tipo original da função, 
+                                                          mas eu removo o tipo dos argumentos que já foram fornecidos.
+                                                      -}
                         OK t -> Erro ("@typechecker: tipo deveria ser funcao em " ++ printTree exp++ " tipo real: " ++ show t)
                         Erro msg -> Erro msg
-    -- TODO: o que esta sendo testando abaixo ?                     
+
+    -- DONE: o que esta sendo testando abaixo ?  
+    {- Faz a inferência de tipos para cada uma das expressões presentes na composição de funções
+       Se os tipos delas forem válidos, verifica se o tipo de retorno de exp2 é igual ao tipo dos argumentos de exp1
+       Isto é, seja <f . g> uma composição de funções, é verificado se a imagem de 'g' está contida no domínio de 'f'
+    -}              
     EComp exp1 exp2 -> case (tinf tc exp1, tinf tc exp2) of
-                        (OK (TFun trExp1 tpsExp1) , OK (TFun trExp2 tpsExp2) )  ->
-                           if ([trExp2] == tpsExp1)
-                             then OK (TFun trExp1 tpsExp2)
-                             else Erro "erro..."
+                        (OK (TFun tprExp1 tpsExp1) , OK (TFun tprExp2 tpsExp2) )  ->
+                          if ([tprExp2] == tpsExp1) then -- Verifica se o tipo de retorno da função 2 é igual ao tipo dos argumentos da função 1 
+                            OK (TFun tprExp1 tpsExp2)    -- Se forem iguais, é possível aplicar a função composta. A função composta tem os argumentos da segunda função e tipo de retorno da primeira
+                          else 
+                            Erro "erro..."
 
 
 
@@ -115,7 +139,6 @@ combChecks tc exp1 exp2 tp = let r = tke tc exp1 tp in
                                                          OK _ -> OK tp
                                                          Erro msg -> Erro msg
                                           Erro msg -> Erro msg 
-                             
 
 lookup :: TContext -> Ident -> R Type
 lookup [] id = Erro ("@typechecker: " ++ printTree id ++ " nao esta no contexto. ")
@@ -142,8 +165,5 @@ updatecF tc (f@(Fun _ nomeF _ _):fs) = let r = updateTC tc nomeF (getFunctionTyp
                                                    case r of 
                                                      OK tcNew -> updatecF tcNew fs
                                                      Erro msg -> Erro msg
-                                                     
-                                                     
-                                                     
 
 
