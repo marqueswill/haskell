@@ -36,7 +36,7 @@ tke tc exp tp = let r = tinf tc exp in
                           case r of
                              OK tipo -> if (tipo == tp)
                                            then OK tc
-                                           else Erro ("@typechecker: a expressao "++ printTree exp ++ " tem tipo " ++ 
+                                           else Erro ("@typechecker: a expressao "++ printTree exp ++ " tem o tipo " ++ 
                                                      printTree tipo ++ " mas o tipo esperado eh "
                                                      ++ printTree tp)
                              Erro msg -> Erro msg  
@@ -72,26 +72,27 @@ tinf tc x  =  case x of
                                                Erro msg -> Erro (msg ++ " na expressao: " ++ printTree eIf)
                                    Erro msg -> Erro (msg ++ " na expressao: " ++ printTree eIf)
                                    
-    -- DONE?: 1) completar abaixo trocando undefined pelo retorno apropriado 
-    -- DONE?: 2) explicar o argumento de tinf abaixo
+    -- TODO: 1) completar abaixo trocando undefined pelo retorno apropriado 
+    -- TODO: 2) explicar o argumento de tinf abaixo
     ELambda params exp -> case (tinf (parameterTypeBindings ++ tc) exp) of  
-                            OK tExp -> OK tExp
+                            OK tExp -> OK (TFun tExp paramTypes) -- Retorno um tipo TFun que a expressão lambda representa
                             Erro msg -> Erro msg
                            {- Extraio os pares (tipo, nome) da lista de parâmetros da função lambda para serem usados no contexto de tipos local da expressão lambda -}
                            where parameterTypeBindings = map (\(Dec tp id) -> (id,tp)) params
+                                 paramTypes = map (\(Dec tp id) -> tp) params
 
-    -- DONE?: 1) completar abaixo trocando undefined pelo retorno apropriado 
-    -- DONE?: 2) fazer as explicacoes necessarias        
+    -- TODO: 1) completar abaixo trocando undefined pelo retorno apropriado
+    -- TODO: 2) fazer as explicacoes necessarias
     ECall exp lexp  -> case (tinf tc exp) of  
-                        OK (TFun tR pTypes) ->  if (length pTypes >= length lexp) then   -- DONE ==> Verifica se o número de argumentos é menor (aplicação parcial) ou igual (aplicação total) ao número de parâmetros da função
-                                                    if (isThereError tksArgs /= []) then -- Se tiver mais argumentos que parâmetros lanço erro
+                        OK (TFun tR pTypes) ->  if (length pTypes >= length lexp) then   -- TODO ==> Verifica se o número de argumentos é menor (aplicação parcial) ou igual (aplicação total) ao número de parâmetros da função
+                                                    if (isThereError tksArgs /= []) then 
                                                       Erro " @typechecker: tipo incompativel entre argumento e parametro"
                                                     else 
-                                                      if (length pTypes > length lexp)      -- DONE: O que isso testa? ==> Verifica se o número de parâmetro é maior que o de argumentos
+                                                      if (length pTypes > length lexp)      -- TODO: O que isso testa? ==> Verifica se o número de parâmetro é maior que o de argumentos
                                                         then OK (TFun tR partialParamTypes) -- Se eu tenho menos argumnetos que parâmetros, eu retorna o tipo da função parcial que será gerada (aplicação parcial)
                                                         else OK tR                          -- Caso contrário, retorna o tipo da função (aplicação total)
-
-                                                else Erro " @typechecker: mais argumentos que parametros"
+                                                -- Se tiver mais argumentos que parâmetros lanço erro
+                                                else Erro " @typechecker: mais argumentos que parametros" 
 
                                                 where tksArgs = zipWith (tke tc) lexp pTypes
                                                       isThereError l = filter (==False) 
@@ -113,10 +114,10 @@ tinf tc x  =  case x of
                                                           Ou seja, o tipo de retorno é o mesmo que o tipo original da função, 
                                                           mas eu removo o tipo dos argumentos que já foram fornecidos.
                                                       -}
-                        OK t -> Erro ("@typechecker: tipo deveria ser funcao em " ++ printTree exp++ " tipo real: " ++ show t)
+                        OK t -> Erro ("@typechecker: tipo deveria ser funcao em " ++ printTree exp ++ " tipo real: " ++ show t)
                         Erro msg -> Erro msg
 
-    -- DONE: o que esta sendo testando abaixo ?  
+    -- TODO: o que esta sendo testando abaixo ?
     {- Faz a inferência de tipos para cada uma das expressões presentes na composição de funções
        Se os tipos delas forem válidos, verifica se o tipo de retorno de exp2 é igual ao tipo dos argumentos de exp1
        Isto é, seja <f . g> uma composição de funções, é verificado se a imagem de 'g' está contida no domínio de 'f'

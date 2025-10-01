@@ -1,7 +1,7 @@
-int soma (int a , int b) {
-  a + b
+int soma (int a , int b, int c) {
+  a + b + c
 }
 
 int main() {
-   (soma (2)) (3)
+   (soma (16/2/2, 3*2/2)) (4-2+3-1)
 }
