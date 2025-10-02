@@ -5,9 +5,12 @@ module Interpreter where
 
 import AbsLF
 import AbsLFAux  -- TODO: leia agora o conteudo desse arquivo (AbsLFAux.hs) e explique por que refatoramos assim 
-import Prelude hiding (lookup)
-
-
+import Prelude hiding (lookup)                                {- Essa refatoração foi feita em um arquivo auxilar por que o arquivo da sintaxe abastrata é gerado pelo bnfc 
+                                                                -> Abstração dos getters
+                                                                -> Modularidade do código
+                                                                -> Organização e legibilidade
+                                                                -> Reuso de funções em diversas partes (menos código duplicado)
+                                                              -}
 executeP :: Program -> Valor
 
 executeP (Prog fs) =  eval (updatecF [] fs) (expMain fs)
@@ -35,48 +38,60 @@ eval context x = case x of
     EIf exp expT expE -> if ( i (eval context exp) /= 0) 
                           then eval context expT
                           else eval context expE
-    -- TODO: na linha abaixo, retorne um ValorFun contendo o lambda e saiba explicar a razao                            
-    lambda@(ELambda params exp) -> undefined
-    -- TODO: em EComp abaixo, troque undefined (2 ocorrencias) pela construcao apropriada                           
-    EComp exp1 exp2 ->  let (ValorFun exp1') = eval context exp1
-                            (ValorFun exp2') = undefined in 
-                          ValorFun(ELambda (getParamsTypesL exp2') 
-                                           (ECall undefined [ECall exp2' (getParamsExpL exp2')]))             
+
+    -- TODO: na linha abaixo, retorne um ValorFun contendo o lambda e saiba explicar a razao 
+    lambda@(ELambda params exp) -> ValorFun lambda
+
+    -- TODO: em EComp abaixo, troque undefined (2 ocorrencias) pela construcao apropriada
+    -- Considerando que exp1 e exp2 são as expressões que abstraem duas funções 'f' e 'g' quaisquer                           
+    EComp exp1 exp2 ->  let (ValorFun exp1') = eval context exp1 -- Avalia a expressão que define f
+                            (ValorFun exp2') = eval context exp2 -- Avalia a expressão que define g
+                            ecallCompResult = ECall exp1' [ECall exp2' (getParamsExpL exp2')] -- Faz a chamada da função 'f' usando o resultado da função 'g' como argumento
+                        in 
+                          ValorFun (ELambda (getParamsTypesL exp2') ecallCompResult) {- Retorna uma função como valor a qual é a composição <f . g>
+                                                                                          Essa função tem os parametros de g, e tem como corpo a expressão resultante da aplicação de f no resultado de g -}
+
     {- TODO: em ECall abaixo, troque undefined (3 ocorrencias) pela construcao apropriada.                           
        Dica: estude o codigo, buscando entender tambem as definicoes locais -}
-    ECall exp lexp ->  if (length lexp < length parameters) 
-                         then ValorFun (ELambda undefined undefined) -- TODO: que caso eh esse ?
-                         else eval (paramBindings ++ contextFunctions) exp' -- TODO: que caso eh esse ? 
-                        where (ValorFun lambda) = eval context undefined
-                              parameters = getParamsL lambda
-                              paramBindings = zip parameters (map (eval context) lexp)
-                              params' = drop (length lexp) (getParamsTypesL lambda)
-                              exp' = subst paramBindings (getExpL lambda) 
-                              contextFunctions = filter (\(i,v) -> case v of 
-                                                                         ValorFun _ -> True 
-                                                                         _ -> False
-                                                           ) 
-                                                          context
+    ECall exp lexp -> if (length lexp < length parameters) then  -- Se tenho menos argumentos que parâmetros 
+                        -- TODO: que caso eh esse? ==> APLICAÇÃO PARCIAL: retorno uma função lambda
+                        ValorFun (ELambda params' exp')                             
+                      else 
+                        -- TODO: que caso eh esse? ==> APLICAÇÃO TOTAL: retorno o resultado da expressão
+                        eval (paramBindings ++ contextFunctions) exp'                
+                      
+                      where (ValorFun lambda) = eval context exp
+                            parameters = getParamsL lambda                           -- Parâmetros da função lambda
+                            paramBindings = zip parameters (map (eval context) lexp) -- Associo os parâmtros da função aos argumentos passados
+                            contextFunctions = filter (\(i,v) -> case v of           -- Contexto onde está as definições das funções
+                                                                        ValorFun _ -> True 
+                                                                        _ -> False
+                                                          ) 
+                                                        context
+
+                            params' = drop (length lexp) (getParamsTypesL lambda)    -- Removo os parâmetros cujos valores foram fornecidos
+                            exp' = subst paramBindings (getExpL lambda)              -- Substituo na expressão os argumentos que foram fornecidos
 
 
 -- a função "subst" gera uma nova expressao a partir dos bindings em RContext
 subst :: RContext -> Exp -> Exp 
 subst rc exp  = case exp of  
-    EVar id        -> bind id rc -- TODO: por que eh implementado assim ?
+    -- TODO: por que eh implementado assim ?
+    EVar id        -> bind id rc 
     -- TODO: explique a implementacao da linha abaixo
     lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
-    ECall exp lexp -> ECall (subst rc exp ) (map (subst rc) lexp)
-    EAdd exp0 exp  -> EAdd (subst rc exp0 ) (subst rc exp )
+    ECall exp lexp -> ECall (subst rc exp) (map (subst rc) lexp)
+    EAdd exp0 exp -> EAdd (subst rc exp0) (subst rc exp)
     -- TODO: nos casos abaixo, troque cada undefined pela construcao apropriada
-    EComp exp1 exp2 -> undefined
-    EIf expC expT expE -> undefined
-    ECon exp0 exp  -> undefined
-    ESub exp0 exp  -> undefined
-    EMul exp0 exp  -> undefined
-    EDiv exp0 exp  -> undefined
-    EOr  exp0 exp  -> undefined
-    EAnd exp0 exp  -> undefined
-    ENot exp       -> undefined
+    EComp exp1 exp2 -> EComp (subst rc exp1 ) (subst rc exp2)
+    EIf expC expT expE -> EIf (subst rc expC) (subst rc expT) (subst rc expE)
+    ECon exp0 exp -> ECon (subst rc exp0) (subst rc exp)
+    ESub exp0 exp -> ESub (subst rc exp0) (subst rc exp)
+    EMul exp0 exp -> EMul (subst rc exp0) (subst rc exp)
+    EDiv exp0 exp -> EDiv (subst rc exp0) (subst rc exp)
+    EOr  exp0 exp -> EOr  (subst rc exp0) (subst rc exp)
+    EAnd exp0 exp -> EAnd (subst rc exp0) (subst rc exp)
+    ENot exp -> ENot (subst rc exp)
     _ -> exp   -- TODO: quais sao esses casos e por que sao implementados assim ?                        
 
 {- TODO: 
@@ -118,17 +133,15 @@ wrapValueExpression (ValorFun exp) = exp
 data Valor = ValorInt {
                i :: Integer         
              }
-            | 
-             ValorFun {
+           | ValorFun {
                f :: Exp   --f :: Function  **NOVO TODO: Por que mudou ?
-             }   
-            | 
-             ValorStr {
+            }   
+           | ValorStr {
                s :: String
-             } 
-            | ValorBool {
+            } 
+           | ValorBool {
                b :: Bool
-             }
+            }
 
 instance Show Valor where
   show (ValorBool b) = show b

@@ -100,9 +100,9 @@ tinf tc x  =  case x of
                                                                                               case r2 of
                                                                                                 OK _ -> True
                                                                                                 Erro _ -> False)) l)
-                                                      start = length lexp
-                                                      end = length pTypes
-                                                      partialParamTypes = take (end - start + 1) (drop start pTypes)
+
+                                                      partialParamTypes = drop (length lexp) pTypes
+
                                                       {-  Exemplo: 
                                                           f :: Integer -> Integer -> Integer -> Integer
                                                           f a b c = a + b + c

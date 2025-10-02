@@ -33,7 +33,7 @@ data Exp
     | ESub Exp Exp
     | EMul Exp Exp
     | EDiv Exp Exp
-    | ECall Exp [Exp]
+    | ECall Exp [Exp] -- Expressão, Argumentos
     | EInt Integer
     | EVar Ident
     | EStr String
