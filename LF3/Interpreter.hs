@@ -76,12 +76,16 @@ eval context x = case x of
 -- a função "subst" gera uma nova expressao a partir dos bindings em RContext
 subst :: RContext -> Exp -> Exp 
 subst rc exp  = case exp of  
-    -- TODO: por que eh implementado assim? ==> Porque quando encontramos uma variável, precisamos substituí-la pelo valor associado no contexto de substituição (RContext). 
+    -- TODO: Por que eh implementado assim? ==> Porque quando encontramos uma variável, precisamos substituí-la pelo valor associado no contexto de substituição (RContext). 
     EVar id        -> bind id rc 
-    -- TODO: explique a implementacao da linha abaixo ==> Na substituição de valores na expressão lambda, ignoramos os parâmetros da lambda Ex: lambda int x -> x + 2 (ignoramos o x antes de '->')
+
+    {- TODO: Explique a implementacao da linha abaixo ==> 
+        Na substituição de valores na expressão lambda, ignoramos os parâmetros da lambda 
+        Ex: lambda int x -> x + 2 (basicamente ignoramos o x antes de '->', pq ele é só um parâmetro) -}
     lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
     ECall exp lexp -> ECall (subst rc exp) (map (subst rc) lexp)
     EAdd exp0 exp -> EAdd (subst rc exp0) (subst rc exp)
+
     -- TODO: nos casos abaixo, troque cada undefined pela construcao apropriada
     EComp exp1 exp2 -> EComp (subst rc exp1 ) (subst rc exp2)
     EIf expC expT expE -> EIf (subst rc expC) (subst rc expT) (subst rc expE)
@@ -188,4 +192,3 @@ updatecF c [] = c
 updatecF c (f:fs) = updatecF (update c (getName f)    
                                        (ValorFun (ELambda (getParams f) (getExp f)))) 
                               fs
--- updatecF c (f:fs) = updatecF (update c (getName f) (ValorFun f)) fs

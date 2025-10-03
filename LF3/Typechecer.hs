@@ -84,7 +84,7 @@ tinf tc x  =  case x of
     -- TODO: 1) completar abaixo trocando undefined pelo retorno apropriado
     -- TODO: 2) fazer as explicacoes necessarias
     ECall exp lexp  -> case (tinf tc exp) of  
-                        OK (TFun tR pTypes) ->  if (length pTypes >= length lexp) then   -- TODO ==> Verifica se o número de argumentos é menor (aplicação parcial) ou igual (aplicação total) ao número de parâmetros da função
+                        OK (TFun tR pTypes) ->  if (length pTypes >= length lexp) then      -- TODO ==> Verifica se o número de argumentos é menor (aplicação parcial) ou igual (aplicação total) ao número de parâmetros da função
                                                     if (isThereError tksArgs /= []) then 
                                                       Erro " @typechecker: tipo incompativel entre argumento e parametro"
                                                     else 
@@ -117,7 +117,7 @@ tinf tc x  =  case x of
                         OK t -> Erro ("@typechecker: tipo deveria ser funcao em " ++ printTree exp ++ " tipo real: " ++ show t)
                         Erro msg -> Erro msg
 
-    -- TODO: o que esta sendo testando abaixo ?
+    -- TODO: O que esta sendo testando abaixo ?
     {- Faz a inferência de tipos para cada uma das expressões presentes na composição de funções
        Se os tipos delas forem válidos, verifica se o tipo de retorno de exp2 é igual ao tipo dos argumentos de exp1
        Isto é, seja <f . g> uma composição de funções, é verificado se a imagem de 'g' está contida no domínio de 'f'
