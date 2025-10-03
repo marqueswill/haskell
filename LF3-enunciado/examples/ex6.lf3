@@ -1,0 +1,11 @@
+int double(int x) {
+  x + x
+}
+
+int quadruple(int y) {
+  double(double(y))
+}
+
+int main() {
+  quadruple(3)
+}

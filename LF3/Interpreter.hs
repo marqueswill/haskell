@@ -12,14 +12,12 @@ import Prelude hiding (lookup)                                {- Essa refatoraç
                                                                 -> Reuso de funções em diversas partes (menos código duplicado)
                                                               -}
 executeP :: Program -> Valor
-
 executeP (Prog fs) =  eval (updatecF [] fs) (expMain fs)
     where expMain (f:xs) 
               | (getName f == (Ident "main")) =  getExp f
               | otherwise = expMain xs                                            
 
 type RContext = [(Ident,Valor)]
-   
 eval :: RContext -> Exp -> Valor
 eval context x = case x of
     ECon exp0 exp  -> ValorStr ( s (eval context exp0) ++  s (eval context exp) )
@@ -40,13 +38,15 @@ eval context x = case x of
                           else eval context expE
 
     -- TODO: na linha abaixo, retorne um ValorFun contendo o lambda e saiba explicar a razao 
+    -- O eval retorna uma função lamda como valor para que ela possa ser aplicada posteriormente
+    -- Por exemplo, em ECall quando ocorre uma avaliação parcial, retornamos o valor de uma função lambda
     lambda@(ELambda params exp) -> ValorFun lambda
 
     -- TODO: em EComp abaixo, troque undefined (2 ocorrencias) pela construcao apropriada
     -- Considerando que exp1 e exp2 são as expressões que abstraem duas funções 'f' e 'g' quaisquer                           
     EComp exp1 exp2 ->  let (ValorFun exp1') = eval context exp1 -- Avalia a expressão que define f
                             (ValorFun exp2') = eval context exp2 -- Avalia a expressão que define g
-                            ecallCompResult = ECall exp1' [ECall exp2' (getParamsExpL exp2')] -- Faz a chamada da função 'f' usando o resultado da função 'g' como argumento
+                            ecallCompResult = ECall exp1' [ECall exp2' (getParamsExpL exp2')] -- "f(g(x))" ==> Faz a chamada da função 'f' usando o resultado da função 'g' como argumento
                         in 
                           ValorFun (ELambda (getParamsTypesL exp2') ecallCompResult) {- Retorna uma função como valor a qual é a composição <f . g>
                                                                                           Essa função tem os parametros de g, e tem como corpo a expressão resultante da aplicação de f no resultado de g -}
@@ -68,7 +68,7 @@ eval context x = case x of
                                                                         _ -> False
                                                           ) 
                                                         context
-
+                            -- Usados na aplicação parcial
                             params' = drop (length lexp) (getParamsTypesL lambda)    -- Removo os parâmetros cujos valores foram fornecidos
                             exp' = subst paramBindings (getExpL lambda)              -- Substituo na expressão os argumentos que foram fornecidos
 
@@ -76,9 +76,9 @@ eval context x = case x of
 -- a função "subst" gera uma nova expressao a partir dos bindings em RContext
 subst :: RContext -> Exp -> Exp 
 subst rc exp  = case exp of  
-    -- TODO: por que eh implementado assim ?
+    -- TODO: por que eh implementado assim? ==> Porque quando encontramos uma variável, precisamos substituí-la pelo valor associado no contexto de substituição (RContext). 
     EVar id        -> bind id rc 
-    -- TODO: explique a implementacao da linha abaixo
+    -- TODO: explique a implementacao da linha abaixo ==> Na substituição de valores na expressão lambda, ignoramos os parâmetros da lambda Ex: lambda int x -> x + 2 (ignoramos o x antes de '->')
     lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
     ECall exp lexp -> ECall (subst rc exp) (map (subst rc) lexp)
     EAdd exp0 exp -> EAdd (subst rc exp0) (subst rc exp)
@@ -92,17 +92,35 @@ subst rc exp  = case exp of
     EOr  exp0 exp -> EOr  (subst rc exp0) (subst rc exp)
     EAnd exp0 exp -> EAnd (subst rc exp0) (subst rc exp)
     ENot exp -> ENot (subst rc exp)
-    _ -> exp   -- TODO: quais sao esses casos e por que sao implementados assim ?                        
+    _ -> exp   {- TODO: quais sao esses casos e por que sao implementados assim ? ==> Casos base: EInt, EStr, ETrue, EFalse. 
+                                                                                      São implementados assim pois são literais, isto é: não há variáveis para substituir nessas expressões.-}                    
 
 {- TODO: 
-  sobre a implementacao finalizada de subst:
-  1) qual eh o caso base?
-  2) como descrever o numero de casos recursivos? depende (in)diretamente de algo?
-  3) qual a finalidade dos casos recursivos?
-  4) por que a linha 64 eh diferente dos outros casos recursivos?  
-  5) numa especificacao textual intuitiva e concisa (semelhante ao comentario na linha 59),
-     qual a linha mais importante entre 62-77 ?
+  Sobre a implementacao finalizada de subst:
+  1) Qual eh o caso base? 
+    O caso base são as expressões literais (EInt, EStr, ETrue, EFalse) 
+    onde não há variáveis para substituir.
+
+  2) Como descrever o número de casos recursivos? Depende (in)diretamente de algo?
+    Depende diretamente da estrutura da expressão. Cada construtor de expressão que contém sub-expressões (como EAdd, EIf, ECall, etc.) 
+    requer um caso recursivo para processar essas sub-expressões.
+
+  3) Qual a finalidade dos casos recursivos?
+    Processar e substituir variáveis em todas as sub-expressões de uma expressão composta.
+
+  4) Por que a linha 82 eh diferente dos outros casos recursivos?  
+    Porque em uma expressão lambda, os parâmetros da função são variáveis ligadas que não devem ser substituídas. 
+    Portanto, ao processar o corpo da lambda, removemos essas variáveis do contexto de substituição usando a função diff.
+
+  5) Numa especificacao textual intuitiva e concisa (semelhante ao comentario na linha 76),
+  qual a linha mais importante entre 80-84?
+    Entre o Evar, o Ecall e o Elambda, a linha mais importante é a do EVar porque é o caso base da substituição, 
+    onde a variável é efetivamente substituída pelo valor associado no contexto.
+    "No caso EVar, substitui-se a variável pelo seu valor associado no contexto de substituição (RContext)."
+
   6) Ha semelhanca de implementacao em relacao ao Optimizer.hs? Qual(is)?    
+    Ambos utilizam recursão para processar a estrutura da expressão.
+    Ambos possuem casos base para expressões literais.
 -}
 
 -- a função "diff" faz a diferença, tirando de RContext os mapeamentos envolvendo [Ident].
@@ -114,7 +132,9 @@ rc `diff` [] = rc
     | otherwise = (k,v) : ( kvs `diff` (id:ids))
 
 -- a função bind retorna uma expressao contendo o valor do id no RContext, ou o proprio id. 
--- TODO: por que nao usamos o lookup no lugar de bind ?
+{- TODO: por que nao usamos o lookup no lugar de bind? ==> Porque o lookup retorna apenas o valor associado ao id fornecido, 
+                                                           enquanto o bind retorna a expressão com o valor associado ao id empacotado, 
+                                                           ou o próprio id se não estiver no contexto passado. -}
 bind :: Ident -> RContext -> Exp
 bind id [] = EVar id  -- retorna o proprio id se ele nao esta ligado em RContext
 bind id ((k,v):kvs)
@@ -134,7 +154,7 @@ data Valor = ValorInt {
                i :: Integer         
              }
            | ValorFun {
-               f :: Exp   --f :: Function  **NOVO TODO: Por que mudou ?
+               f :: Exp   --f :: Function  **NOVO TODO: Por que mudou ? Porque funções agora são valores além de serem expressões
             }   
            | ValorStr {
                s :: String
@@ -147,7 +167,7 @@ instance Show Valor where
   show (ValorBool b) = show b
   show (ValorInt i) = show i
   show (ValorStr s) = s
-  show (ValorFun f) = show f  -- TODO: por que essa linha funciona ?
+  show (ValorFun f) = show f  -- TODO: por que essa linha funciona? ==> Porque funções são valores e expressões, é o tipo Exp possui herança de Show
   
 
 lookup :: RContext -> Ident -> Valor
