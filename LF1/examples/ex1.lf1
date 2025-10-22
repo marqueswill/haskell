@@ -1,3 +1,11 @@
-main () {
-  if (1) then 2 else 3
+double(x) {
+  x + x
+}
+
+quadruple(y) {
+  double(double(y))
+}
+
+main() {
+  quadruple(10)
 }

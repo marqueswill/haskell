@@ -11,6 +11,10 @@ main = do
   interact calc
   putStrLn ""
 
-calc s = 
-  let Ok p = pProgram  (myLexer s)
+calc s = case pProgram  (myLexer s) of
+           Ok p -> show (executeP p)
+           Bad s -> show s
+{-    
+  let Ok p = pProgram  (myLexer s) 
   in show (executeP p)
+-}
