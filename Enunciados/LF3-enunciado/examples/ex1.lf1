@@ -1,0 +1,11 @@
+double(x) {
+  x + x
+}
+
+quadruple(y) {
+  double(double(y))
+}
+
+main() {
+  quadruple(3)
+}
