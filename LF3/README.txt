@@ -15,7 +15,13 @@ Nota��o:
   ==> ghc --make Interpret.hs
 
 4) testar o executável com exemplos:
+  Linux:
   ==> ./Interpret < examples/ex1.lf3
+  ==> for f in examples/*.lf3; do ./Interpret < $f; done
+
+  Windows:
+  ==> Get-Content examples/ex1.lf3 | .\Interpret.exe
+  ==> Get-ChildItem -Path examples/ -Filter *.lf3 | ForEach-Object { Get-Content -Path $_.FullName | .\Interpret.exe }
 
 ** Passos preliminares (feito pelo professor)
 -3) Definir/editar a sintaxe concreta (feito pelo professor)
