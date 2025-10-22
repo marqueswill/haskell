@@ -1,3 +1,9 @@
-main () {
-  (true && false) || (!true)
+sum(n) {
+  if (n) 
+    then (n + sum(n - 1)) 
+	else 0
+}
+
+main() {
+  sum(10)
 }

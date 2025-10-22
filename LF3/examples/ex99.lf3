@@ -1,0 +1,12 @@
+int double(int x) {
+  x + x
+}
+
+int triple (int b) {
+  3 * b 
+}
+
+
+int main() {
+  (<double . triple>)  (4)
+}

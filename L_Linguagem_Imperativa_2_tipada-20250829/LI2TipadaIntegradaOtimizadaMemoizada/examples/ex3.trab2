@@ -1,0 +1,11 @@
+int main () {
+  int f = fat (5+1);  
+  return f;
+}
+
+int fat (int n) {
+ int r;
+ if (n)
+   then return n * fat (n-1);
+   else return 1;
+ }

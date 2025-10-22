@@ -1,0 +1,11 @@
+
+main () {
+   fat (5)
+}
+
+fat (n) {
+ if (n)
+    then n * fat (n-1)
+    else 1
+
+}
