@@ -1,4 +1,4 @@
-wProg. Program  ::= [Function] ;
+Prog. Program  ::= [Function] ;
 Fun. Function ::= Type Ident "(" [Decl] ")" "{" Exp "}" ;
 
 Dec. Decl ::= Type Ident ;
