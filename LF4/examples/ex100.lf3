@@ -1,6 +1,10 @@
 
 int main () {
-   fat (5+1)
+   if (1) 
+   then
+      fat (5+1)
+   else 
+      0
 }
 
 int fat (int n) {

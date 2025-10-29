@@ -28,7 +28,7 @@ Nota��o:
   ==> arquivo LF3.cf
 
 -2) Gerar os fontes do analisador sint�tico (parser) e l�xico (lexer), assim como o Makefile usando o BNF Converter
-  ==> bnfc  -m  LF3.cf
+  ==> bnfc --generic -m  LF3.cf
 
 -1) Compilar os fontes do parser e lexer 
   ==> make

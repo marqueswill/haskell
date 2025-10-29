@@ -1,0 +1,6 @@
+
+bool main () {
+   !false || false
+}
+
+

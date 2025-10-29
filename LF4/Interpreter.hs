@@ -8,12 +8,14 @@ import AbsLF
 import AbsLFAux
 import Prelude hiding (lookup)
 
+
+
 executeP :: Program -> Valor
 executeP (Prog fs) = eval (updatecF [] fs) (expMain fs)
   where
     expMain (f : xs)
       | (getName f == (Ident "main")) = getExp f
-      | otherwise = expMain xs
+      | otherwise = expMain xsimport GHC.Generics qualified as C (Generic)
 
 type RContext = [(Ident, Valor)]
 
@@ -63,22 +65,32 @@ eval context x = case x of
       params' = drop (length lexp) (getParamsTypesL lambda)
       exp' = subst paramBindings (getExpL lambda)
 
+-- subst :: RContext -> Exp -> Exp
+-- subst rc exp = case exp of
+--   EVar id -> bind id rc
+--   lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
+--   ECall exp lexp -> ECall (subst rc exp) (map (subst rc) lexp)
+--   EAdd exp0 exp -> EAdd (subst rc exp0) (subst rc exp)
+--   EComp exp1 exp2 -> EComp (subst rc exp1) (subst rc exp2)
+--   EIf expC expT expE -> EIf (subst rc expC) (subst rc expT) (subst rc expE)
+--   ECon exp0 exp -> ECon (subst rc exp0) (subst rc exp)
+--   ESub exp0 exp -> ESub (subst rc exp0) (subst rc exp)
+--   EMul exp0 exp -> EMul (subst rc exp0) (subst rc exp)
+--   EDiv exp0 exp -> EDiv (subst rc exp0) (subst rc exp)
+--   EOr exp0 exp -> EOr (subst rc exp0) (subst rc exp)
+--   EAnd exp0 exp -> EAnd (subst rc exp0) (subst rc exp)
+--   ENot exp -> ENot (subst rc exp)
+--   _ -> exp
+
+replaceVar :: RContext -> Exp -> Exp
+replaceVar rc (EVar id) = bind id rc
+replaceVar _ exp = exp
+
+
 subst :: RContext -> Exp -> Exp
 subst rc exp = case exp of
-  EVar id -> bind id rc
   lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
-  ECall exp lexp -> ECall (subst rc exp) (map (subst rc) lexp)
-  EAdd exp0 exp -> EAdd (subst rc exp0) (subst rc exp)
-  EComp exp1 exp2 -> EComp (subst rc exp1) (subst rc exp2)
-  EIf expC expT expE -> EIf (subst rc expC) (subst rc expT) (subst rc expE)
-  ECon exp0 exp -> ECon (subst rc exp0) (subst rc exp)
-  ESub exp0 exp -> ESub (subst rc exp0) (subst rc exp)
-  EMul exp0 exp -> EMul (subst rc exp0) (subst rc exp)
-  EDiv exp0 exp -> EDiv (subst rc exp0) (subst rc exp)
-  EOr exp0 exp -> EOr (subst rc exp0) (subst rc exp)
-  EAnd exp0 exp -> EAnd (subst rc exp0) (subst rc exp)
-  ENot exp -> ENot (subst rc exp)
-  _ -> exp
+  _ -> everywhere (mkT (replaceVar rc)) exp
 
 {- TODO:
   Sobre a implementacao finalizada de subst:
