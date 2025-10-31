@@ -2,7 +2,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
--- | The abstract syntax of language LF4.
+-- | The abstract syntax of language LF2.
 
 module AbsLF where
 

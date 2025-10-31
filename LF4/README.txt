@@ -12,7 +12,7 @@ Nota��o:
   => arquivo "Interpreter.hs"
 
 3) compilar o driver (main) do interpretador 
-  ==> ghc --make Interpret.hs
+  ==> ghc -package array --make Interpret.hs
 
 4) testar o executável com exemplos:
   ==> ./Interpret < examples/ex1.lf4
