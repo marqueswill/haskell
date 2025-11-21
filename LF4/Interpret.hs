@@ -22,6 +22,8 @@ calc soureCode =
                 then show (filter isError typeCheckResult)
                 else
                   let optProgram = optimizeP ast
+                      -- Captura o resultado (val) e o ambiente ((_, mem))
+                      (val, (_, mem)) = executeP optProgram
                    in ">>>>>>> Programa original:<<<<<<< \n"
                         ++ printTree ast
                         ++ "\n"
@@ -29,5 +31,8 @@ calc soureCode =
                         ++ printTree optProgram
                         ++ "\n"
                         ++ ">>>>>>> Resultado da execucao:<<<<<<< \n"
-                        ++ show (executeP optProgram)
+                        ++ show val
+                        ++ "\n\n"
+                        ++ ">>>>>>> Memoria (Cache):<<<<<<< \n"
+                        ++ show mem -- Exibe a lista de chamadas memorizadas
         Bad erorMessage -> erorMessage

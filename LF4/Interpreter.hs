@@ -5,11 +5,12 @@ import AbsLF (Ident)
 import AbsLFAux
 import Prelude hiding (lookup)
 
-executeP :: Program -> Valor
-executeP (Prog fs) =
-  let (v1, env1) = eval initialEnv (expMain fs)
-   in v1
+executeP :: Program -> (Valor, Enviroment)
+executeP (Prog fs) = eval initialEnv (expMain fs)
   where
+    -- let (v1, env1) = eval initialEnv (expMain fs)
+    --  in v1
+
     initialContext = updatecF [] fs
     initialMemory = []
     initialEnv = (initialContext, initialMemory)
@@ -65,14 +66,11 @@ eval env@(context, mem) x = case x of
     Nothing ->
       let (resultVal, (ctxFinal, memFinal)) = eval ecallEnv (getExp funDef) -- Senão, faço a chamada da função para os args e retorna
           newMem = updateECallMem memFinal id argValues resultVal -- Atualiza a memória com o novo retorna
-       in (resultVal, (context, newMem)) -- Retona o valor calculado, a
+       in (resultVal, (context, newMem)) -- Retorna o valor calculado, a
     where
       (ValorFun funDef) = lookup context id
       parameters = getParams funDef
-      -- TODO: fold para propagar mudança no env entre eval dos args
       paramBindings = zip parameters (map (fst . eval env) lexp)
-
-      argValues = map (fst . eval env) lexp
 
       contextFunctions =
         filter
@@ -82,7 +80,20 @@ eval env@(context, mem) x = case x of
           )
           context
       ecallContext = paramBindings ++ contextFunctions
-      ecallEnv = (ecallContext, mem)
+
+      -- TODO: fold para propagar mudança no env entre eval dos args
+      -- argValues = map (fst . eval env) lexp
+      (argValues, envAfterArgs) =
+        foldl
+          ( \(vals, currentEnv) exp ->
+              -- Função lambda para dar eval com o env atual
+              let (val, nextEnv) = eval currentEnv exp
+               in (vals ++ [val], nextEnv) -- Concatena o valor resultante, propaga o novo env para o proximo eval
+          )
+          ([], env) -- Inicialmente temos uma lista de valores vazia, e o env inicial
+          lexp -- Lista de expressões da função
+      memWithArgs = snd envAfterArgs
+      ecallEnv = (ecallContext, memWithArgs)
 
 {- Se eu fosse fazer memorização de resultados de chamada, eu precisaria:
   1) Armazenar os resultados após cada chamada
@@ -111,7 +122,8 @@ data Valor
   | ValorBool
       { b :: Bool
       }
-  deriving Eq
+  deriving (Eq)
+
 instance Show Valor where
   show (ValorBool b) = show b
   show (ValorInt i) = show i
