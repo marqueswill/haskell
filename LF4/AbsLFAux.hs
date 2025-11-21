@@ -1,6 +1,9 @@
 module AbsLFAux where
 
 import AbsLF
+import AbsLF (Function)
+
+
 
 getType :: Function -> Type
 getType (Fun tp name params exp) = tp

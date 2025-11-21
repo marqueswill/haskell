@@ -15,7 +15,7 @@ Nota��o:
   ==> ghc -package array --make Interpret.hs
 
 4) testar o executável com exemplos:
-  ==> ./Interpret < examples/ex1.lf4
+  ==> ./Interpret < examples/ex1.lf2
 
 ** Passos preliminares (feito pelo professor)
 -3) Definir/editar a sintaxe concreta (feito pelo professor)

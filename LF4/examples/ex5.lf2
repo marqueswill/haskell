@@ -1,0 +1,10 @@
+
+int main () {
+   fat (100000)
+}
+
+int fat (int n) {
+ if (n)
+    then n * fat (n-1)
+    else 1
+}

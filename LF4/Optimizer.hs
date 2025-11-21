@@ -20,7 +20,9 @@ optimizeE exp = case exp of
     let optExp = optimizeE exp
         optENot = ENot optExp
      in if isLiteral optExp
-          then wrapValueExpression (eval [] optENot)
+          then
+            let (v1, env) = eval ([], []) optENot
+             in wrapValueExpression v1
           else optENot
   ECon exp0 exp -> combOptimize ECon exp0 exp
   EAdd exp0 exp -> combOptimize EAdd exp0 exp
@@ -62,5 +64,7 @@ combOptimize expBinConst exp0 exp1 =
       optExp1 = optimizeE exp1
       optBinExp = expBinConst optExp0 optExp1
    in if isLiteral optExp0 && isLiteral optExp1
-        then wrapValueExpression (eval [] optBinExp)
+        then
+          let (v1, env1) = eval ([], []) optBinExp
+           in wrapValueExpression v1
         else optBinExp
