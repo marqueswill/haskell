@@ -24,9 +24,6 @@ instance Applicative R where
   _ <*> (Erro s) = Erro s
 
 instance Monad R where
-  return :: a -> R a
-  return = OK
-
   (>>=) :: R a -> (a -> R b) -> R b
   (OK x) >>= f = f x
   (Erro s) >>= _ = Erro s
@@ -81,12 +78,9 @@ tinf tc x = case x of
   EDiv exp0 exp -> combChecks tc exp0 exp Tint
   EOr exp0 exp -> combChecks tc exp0 exp Tbool
   EAnd exp0 exp -> combChecks tc exp0 exp Tbool
-  ENot exp ->
-    let r = tke tc exp Tbool -- Verifica se o tipo é booleano
-     in case r of -- Verificação de erro
-          OK _ -> OK Tbool
-          Erro msg -> Erro msg
-  --  TIPOS LITERAIS
+  ENot exp -> do
+    _ <- tke tc exp Tbool
+    OK Tbool
   EStr str -> OK TStr
   ETrue -> OK Tbool
   EFalse -> OK Tbool
@@ -127,15 +121,10 @@ tinf tc x = case x of
           Erro msg -> Erro msg
 
 combChecks :: TContext -> Exp -> Exp -> Type -> R Type
-combChecks tc exp1 exp2 tp =
-  let r = tke tc exp1 tp
-   in case r of
-        OK _ ->
-          let r2 = tke tc exp2 tp
-           in case r2 of
-                OK _ -> OK tp
-                Erro msg -> Erro msg
-        Erro msg -> Erro msg
+combChecks tc exp1 exp2 tp = do
+  _ <- tke tc exp1 tp
+  _ <- tke tc exp2 tp
+  OK tp
 
 lookup :: TContext -> Ident -> R Type
 lookup [] id = Erro ("@typechecker: " ++ printTree id ++ " nao esta no contexto. ")
