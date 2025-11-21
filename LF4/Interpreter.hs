@@ -60,14 +60,20 @@ eval env@(context, mem) x = case x of
       if v /= 0
         then eval env1 expT
         else eval env1 expE
-  ECall id lexp -> case lookupECallLog mem id lexp of
-    Just valor -> (valor, env) -- Se encontrou a chamada na memória, retorno o valor que tava guardado
-    Nothing -> eval ecallEnv (getExp funDef) -- Senão, faço a chamada e retorno (v, env)
+  ECall id lexp -> case lookupECallLog mem id argValues of -- Procura pelo resultado no cache
+    Just valor -> (valor, env) -- Se encontrar o resultado na memória, retorna o valor que tava guardado
+    Nothing ->
+      let (resultVal, (ctxFinal, memFinal)) = eval ecallEnv (getExp funDef) -- Senão, faço a chamada da função para os args e retorna
+          newMem = updateECallMem memFinal id argValues resultVal -- Atualiza a memória com o novo retorna
+       in (resultVal, (context, newMem)) -- Retona o valor calculado, a
     where
       (ValorFun funDef) = lookup context id
       parameters = getParams funDef
       -- TODO: fold para propagar mudança no env entre eval dos args
       paramBindings = zip parameters (map (fst . eval env) lexp)
+
+      argValues = map (fst . eval env) lexp
+
       contextFunctions =
         filter
           ( \(i, v) -> case v of
@@ -105,7 +111,7 @@ data Valor
   | ValorBool
       { b :: Bool
       }
-
+  deriving Eq
 instance Show Valor where
   show (ValorBool b) = show b
   show (ValorInt i) = show i
@@ -114,7 +120,7 @@ instance Show Valor where
 
 type RContext = [(Decl, Valor)] -- Contexto de execução: associa Decl (tipo e id) a Valor
 
-type ECallResults = [([Exp], Valor)] -- Lista de parâmetros e o resultado da chamada
+type ECallResults = [([Valor], Valor)] -- Lista de parâmetros e o resultado da chamada
 
 type ECallLog = (Ident, ECallResults) -- Id do resultado de cada chamada para um dado args
 
@@ -122,13 +128,13 @@ type ECallMem = [ECallLog]
 
 type Enviroment = (RContext, ECallMem)
 
-lookupECallLog :: ECallMem -> Ident -> [Exp] -> Maybe Valor
+lookupECallLog :: ECallMem -> Ident -> [Valor] -> Maybe Valor
 lookupECallLog [] _ _ = Nothing
 lookupECallLog ((idLog, results) : logs) id args
   | id == idLog = getECallResult results args
   | otherwise = lookupECallLog logs id args
 
-getECallResult :: ECallResults -> [Exp] -> Maybe Valor
+getECallResult :: ECallResults -> [Valor] -> Maybe Valor
 getECallResult [] _ = Nothing
 getECallResult ((args, result) : logs) args'
   | args == args' = Just result
@@ -136,13 +142,13 @@ getECallResult ((args, result) : logs) args'
 
 -- Primeiro eu encontro os logs para a função
 -- Em seguida eu chamo a função updateResults para atualizar o log
-updateECallMem :: ECallMem -> Ident -> [Exp] -> Valor -> ECallMem
-updateECallMem [] id lexp res = [(id, [(lexp, res)])]
-updateECallMem ((idLog, results) : logs) id lexp res
-  | id == idLog = (id, updateResults results lexp res) : logs
-  | otherwise = (idLog, results) : updateECallMem logs id lexp res
+updateECallMem :: ECallMem -> Ident -> [Valor] -> Valor -> ECallMem
+updateECallMem [] id args res = [(id, [(args, res)])]
+updateECallMem ((idLog, results) : logs) id args res
+  | id == idLog = (id, updateResults results args res) : logs
+  | otherwise = (idLog, results) : updateECallMem logs id args res
 
-updateResults :: ECallResults -> [Exp] -> Valor -> ECallResults
+updateResults :: ECallResults -> [Valor] -> Valor -> ECallResults
 updateResults [] args' res' = [(args', res')]
 updateResults ((args, res) : xs) args' res'
   | args == args' = (args, res) : xs
