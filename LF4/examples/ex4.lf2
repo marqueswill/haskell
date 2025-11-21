@@ -1,6 +1,6 @@
 
 int main () {
-   fat (skinny(3)-1)
+   fat (skinny(3, 3)-1)
 }
 
 int fat (int n) {
@@ -10,15 +10,12 @@ int fat (int n) {
 
 }
 
-int skinny (int n) {
+int skinny (int n, int m) {
  if (n)
 
-    then n * skinny (n-1)
+    then n * skinny (n-1, m-1)
 
     else 1
-
-
-
 }
 
 

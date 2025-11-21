@@ -1,19 +1,14 @@
-int multiplicar(int a, int b) {
-    if (b) then
-        if (b - 0) then
-            if (b - 1) then
-                if (b + 1) then
-                    a + multiplicar(a, b - 1) 
-                else 
-                    0 - a 
-            else 
-                a
-        else 
-            0 - multiplicar(a, 0 - b) 
-    else 
-        0
+
+int main () {
+   fat (10)
 }
 
-int main() {
-    multiplicar(7, 8)
+int fat (int n) {
+ if (n)
+    then n * fat (n-1)
+    else 1
+
 }
+
+
+

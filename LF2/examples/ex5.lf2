@@ -1,6 +1,6 @@
 
 int main () {
-   fat (100000)
+   fat (10000) - fat (10000)
 }
 
 int fat (int n) {
