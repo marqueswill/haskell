@@ -10,25 +10,6 @@ import Control.Monad.State (StateT, get, put, runStateT)
 import Control.Monad.Trans (lift) -- Necessário para usar 'lift' e subir o erro
 import Prelude hiding (lookup)
 
-{-
-executeP :: Program -> (Valor, Enviroment)
-executeP (Prog fs) = eval (expMain fs)
-  where
-    -- let (v1, env1) = eval initialEnv (expMain fs)
-    --  in v1
-
-    initialContext = updatecF [] fs
-    initialMemory = []
-    initialEnv = (initialContext, initialMemory)
-    expMain (f : xs)
-      | getName f == Ident "main" = getExp f
-      | otherwise = expMain xs
--}
-
--- NO Interpreter.hs
-
--- ... (após as novas importações e type aliases EnvState e EvalM)
-
 executeP :: Program -> R (Valor, Enviroment)
 executeP (Prog fs) = runStateT (eval (expMain fs)) initialEnv
   where
