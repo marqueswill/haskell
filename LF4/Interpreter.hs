@@ -1,12 +1,18 @@
 module Interpreter where
 
 import AbsLF
-import AbsLF (Ident)
+import AbsLF (Exp (EDiv), Ident)
 import AbsLFAux
+import Auxiliar
+import Control.Monad (Monad (return))
+import Control.Monad.Except (MonadError (throwError)) -- Necessário para 'throwError' se for usar R a como base
+import Control.Monad.State (StateT, get, put, runStateT)
+import Control.Monad.Trans (lift) -- Necessário para usar 'lift' e subir o erro
 import Prelude hiding (lookup)
 
+{-
 executeP :: Program -> (Valor, Enviroment)
-executeP (Prog fs) = eval initialEnv (expMain fs)
+executeP (Prog fs) = eval (expMain fs)
   where
     -- let (v1, env1) = eval initialEnv (expMain fs)
     --  in v1
@@ -17,111 +23,109 @@ executeP (Prog fs) = eval initialEnv (expMain fs)
     expMain (f : xs)
       | getName f == Ident "main" = getExp f
       | otherwise = expMain xs
-
-eval :: Enviroment -> Exp -> (Valor, Enviroment)
-eval env@(context, mem) x = case x of
-  ECon exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorStr (s v1 ++ s v2), env2)
-  EAdd exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorInt (i v1 + i v2), env2)
-  ESub exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorInt (i v1 - i v2), env2)
-  EMul exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorInt (i v1 * i v2), env2)
-  EDiv exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorInt (i v1 `div` i v2), env2)
-  EOr exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorBool (b v1 || b v2), env2)
-  EAnd exp0 exp ->
-    let (v1, env1) = eval env exp0
-        (v2, env2) = eval env1 exp
-     in (ValorBool (b v1 && b v2), env2)
-  ENot exp ->
-    let (v1, env1) = eval env exp
-     in (ValorBool (not (b v1)), env1)
-  EStr str -> (ValorStr str, env)
-  ETrue -> (ValorBool True, env)
-  EFalse -> (ValorBool False, env)
-  EInt n -> (ValorInt n, env)
-  EVar id -> (lookup context id, env)
-  EIf exp expT expE -> case eval env exp of
-    (ValorInt v, env1) ->
-      if v /= 0
-        then eval env1 expT
-        else eval env1 expE
-  ECall id lexp -> case lookupECallLog mem id argValues of -- Procura pelo resultado no cache
-    Just valor -> (valor, env) -- Se encontrar o resultado na memória, retorna o valor que tava guardado
-    Nothing ->
-      let (resultVal, (ctxFinal, memFinal)) = eval ecallEnv (getExp funDef) -- Senão, faço a chamada da função para os args e retorna
-          newMem = updateECallMem memFinal id argValues resultVal -- Atualiza a memória com o novo retorna
-       in (resultVal, (context, newMem)) -- Retorna o valor calculado, a
-    where
-      (ValorFun funDef) = lookup context id
-      parameters = getParams funDef
-      paramBindings = zip parameters (map (fst . eval env) lexp)
-
-      contextFunctions =
-        filter
-          ( \(i, v) -> case v of
-              ValorFun _ -> True
-              _ -> False
-          )
-          context
-      ecallContext = paramBindings ++ contextFunctions
-
-      -- TODO: fold para propagar mudança no env entre eval dos args
-      -- argValues = map (fst . eval env) lexp
-      (argValues, envAfterArgs) =
-        foldl
-          ( \(vals, currentEnv) exp ->
-              -- Função lambda para dar eval com o env atual
-              let (val, nextEnv) = eval currentEnv exp
-               in (vals ++ [val], nextEnv) -- Concatena o valor resultante, propaga o novo env para o proximo eval
-          )
-          ([], env) -- Inicialmente temos uma lista de valores vazia, e o env inicial
-          lexp -- Lista de expressões da função
-      memWithArgs = snd envAfterArgs
-      ecallEnv = (ecallContext, memWithArgs)
-
-{- Se eu fosse fazer memorização de resultados de chamada, eu precisaria:
-  1) Armazenar os resultados após cada chamada
-  2) O que eu preciso armazenar -> id da função, parâmetros informados, resultado da chamada
-    -- data Function = Fun Type Ident [Decl] Exp
-    -- padrão do context: [Ident, [[Exp], Exp]]
-  3) Antes de fazer a chamada, eu primeiro:
-    a) verifico se a função já foi chamada antes
-    b) comparo as lista de parâmetro com as listas já armazenadas
-    c) se as listas forem iguais, eu retorno o resultado que foi guardado
-      Caso contrário, eu faço o ecall normalmente e armazeno o novo resultado.
 -}
+
+-- NO Interpreter.hs
+
+-- ... (após as novas importações e type aliases EnvState e EvalM)
+
+executeP :: Program -> R (Valor, Enviroment)
+executeP (Prog fs) = runStateT (eval (expMain fs)) initialEnv
+  where
+    initialContext = updatecF [] fs
+    initialMemory = []
+    initialEnv = (initialContext, initialMemory)
+
+    -- Função auxiliar para encontrar a expressão da função 'main'
+    expMain (f : xs)
+      | getName f == Ident "main" = getExp f
+      | otherwise = expMain xs
+
+type EnvState a = StateT Enviroment R a -- Monad de estado
+
+type EvalM = EnvState Valor
+
+eval :: Exp -> EnvState Valor
+eval x = case x of
+  EStr str -> return (ValorStr str)
+  ETrue -> return (ValorBool True)
+  EFalse -> return (ValorBool False)
+  EInt n -> return (ValorInt n)
+  EVar id -> do
+    (context, mem) <- get
+    let v = lookup context id
+    return v
+  EAdd exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 + i v2))
+  ESub exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 - i v2))
+  EMul exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 * i v2))
+  EDiv exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 `div` i v2))
+  EOr exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorBool (b v1 || b v2))
+  EAnd exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorBool (b v1 && b v2))
+  ECon exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorStr (s v1 ++ s v2))
+  ENot exp -> do
+    v1 <- eval exp
+    return (ValorBool (not (b v1)))
+  EIf exp expT expE -> do
+    cond <- eval exp
+    case cond of
+      ValorInt v ->
+        if v /= 0
+          then eval expT -- Se verdadeiro (diferente de 0), avalia e retorna expT
+          else eval expE -- Se falso (igual a 0), avalia e retorna expE
+  ECall id lexp -> do
+    -- 1. Antes de tudo faço avaliação dos args
+    argValues <- mapM eval lexp -- Usa  o mapM (map monad) para avaliar a lista de argumentos
+    (currentCtx, currentMem) <- get -- Salva o contexto e a memórias antes de entrar no escopo da chamada
+
+    -- 2. Verificação do cache
+    case lookupECallLog currentMem id argValues of -- Primeiro verifica se a função já foi chamada com os argumentos fornecidos
+      Just val -> return val -- Encontrou na memória, só retorno
+      Nothing -> do
+        -- 3. Construção do contexto para chamada
+        let (ValorFun funDef) = lookup currentCtx id
+        let parameters = getParams funDef
+        let contextFunctions = filter (\(_, v) -> case v of ValorFun _ -> True; _ -> False) currentCtx
+        let paramBindings = zip parameters argValues -- Associo cada id a seu valor
+        let newContext = paramBindings ++ contextFunctions -- Contexto local para chamada da função
+
+        -- 4. Troca de contexto
+        put (newContext, currentMem) -- Troco para o contexto da chamada de função
+        resultVal <- eval (getExp funDef) -- Faço eval da função
+
+        -- 5. Atualização da Memória e Restauração do Contexto
+        (_, memAfterBody) <- get -- Pego a nova memória
+        let finalMem = updateECallMem memAfterBody id argValues resultVal -- Salvo a nova chamada de função feita na memória
+        put (currentCtx, finalMem) -- Saio do contexto de chamada de função
+        return resultVal -- Retorno o valor da chamada
 
 -- *** @dica: nao altere o todo o codigo abaixo a partir daqui
 
 data Valor
-  = ValorInt
-      { i :: Integer
-      }
-  | ValorFun
-      { f :: Function
-      }
-  | ValorStr
-      { s :: String
-      }
-  | ValorBool
-      { b :: Bool
-      }
+  = ValorInt {i :: Integer}
+  | ValorFun {f :: Function}
+  | ValorStr {s :: String}
+  | ValorBool {b :: Bool}
   deriving (Eq)
 
 instance Show Valor where

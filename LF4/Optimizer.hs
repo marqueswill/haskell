@@ -1,6 +1,8 @@
 module Optimizer where
 
 import AbsLF
+import Auxiliar
+import Control.Monad.State (StateT, get, put, runStateT)
 import Interpreter
 
 optimizeP :: Program -> Program
@@ -21,8 +23,10 @@ optimizeE exp = case exp of
         optENot = ENot optExp
      in if isLiteral optExp
           then
-            let (v1, env) = eval ([], []) optENot
-             in wrapValueExpression v1
+            let resultR = runStateT (eval optENot) ([], [])
+             in case resultR of
+                  OK (v1, env) -> wrapValueExpression v1
+                  Erro _ -> ENot optENot
           else optENot
   ECon exp0 exp -> combOptimize ECon exp0 exp
   EAdd exp0 exp -> combOptimize EAdd exp0 exp
@@ -65,6 +69,8 @@ combOptimize expBinConst exp0 exp1 =
       optBinExp = expBinConst optExp0 optExp1
    in if isLiteral optExp0 && isLiteral optExp1
         then
-          let (v1, env1) = eval ([], []) optBinExp
-           in wrapValueExpression v1
+          let resultR = runStateT (eval optBinExp) ([], [])
+           in case resultR of
+                OK (v1, env) -> wrapValueExpression v1
+                Erro _ -> ENot optBinExp
         else optBinExp
