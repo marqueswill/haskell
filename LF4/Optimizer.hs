@@ -3,51 +3,57 @@ module Optimizer where
 import AbsLF
 import Auxiliar
 import Control.Monad.State (StateT, get, put, runStateT)
+import Data.Generics -- Importar SYB
 import Interpreter
 
+-- A travessia genérica substitui optimizeP e optimizeF manuais.
+-- 'everywhere' aplica a transformação 'optimizeE' em toda a árvore (bottom-up).
 optimizeP :: Program -> Program
-optimizeP (Prog fs) = Prog (map optimizeF fs)
+optimizeP = everywhere (mkT optimizeE)
 
-optimizeF :: Function -> Function
-optimizeF (Fun tR id decls exp) = Fun tR id decls (optimizeE exp)
-
+-- Função de transformação local.
+-- Assume que as sub-expressões (filhos) já estão otimizadas.
 optimizeE :: Exp -> Exp
 optimizeE exp = case exp of
-  EStr str -> EStr str
-  ETrue -> ETrue
-  EFalse -> EFalse
-  EInt n -> EInt n
-  EVar id -> EVar id
-  ENot exp ->
-    let optExp = optimizeE exp
-        optENot = ENot optExp
-     in if isLiteral optExp
-          then
-            let resultR = runStateT (eval optENot) ([], [])
-             in case resultR of
-                  OK (v1, env) -> wrapValueExpression v1
-                  Erro _ -> ENot optENot
-          else optENot
-  ECon exp0 exp -> combOptimize ECon exp0 exp
-  EAdd exp0 exp -> combOptimize EAdd exp0 exp
-  ESub exp0 exp -> combOptimize ESub exp0 exp
-  EMul exp0 exp -> combOptimize EMul exp0 exp
-  EDiv exp0 exp -> combOptimize EDiv exp0 exp
-  EOr exp0 exp -> combOptimize EOr exp0 exp
-  EAnd exp0 exp -> combOptimize EAnd exp0 exp
-  ECall id lexp -> ECall id (map optimizeE lexp)
-  EIf exp expT expE ->
-    let optExp = optimizeE exp
-        optThen = optimizeE expT
-        optElse = optimizeE expE
-        optEIf = EIf optExp optThen optElse
-     in case optExp of
-          EInt vExpIf ->
-            if vExpIf == 0
-              then optElse
-              else optThen
-          _ -> optEIf
+  EIf (EInt v) expT expE ->
+    if v == 0
+      then expE
+      else expT
+  ENot v ->
+    if isLiteral v
+      then tryEval (ENot v)
+      else ENot v
+  ECon e1 e2 -> tryFold ECon e1 e2
+  EAdd e1 e2 -> tryFold EAdd e1 e2
+  ESub e1 e2 -> tryFold ESub e1 e2
+  EMul e1 e2 -> tryFold EMul e1 e2
+  EDiv e1 e2 -> tryFold EDiv e1 e2
+  EOr e1 e2 -> tryFold EOr e1 e2
+  EAnd e1 e2 -> tryFold EAnd e1 e2
+  -- ECall e outros casos:
+  -- Como é bottom-up, os argumentos dentro de ECall já foram otimizados.
+  -- Basta retornar a própria expressão.
+  _ -> exp
 
+-- Tenta avaliar uma operação binária se ambos os operandos forem literais
+-- Como o eval é bottom up, as expressões já foram otimizadas, logo só preciso aplicar o construtor
+tryFold :: (Exp -> Exp -> Exp) -> Exp -> Exp -> Exp
+tryFold constr e1 e2 =
+  let binExp = constr e1 e2
+   in if isLiteral e1 && isLiteral e2
+        then tryEval binExp -- Faz a avaliação da expressão de literais
+        else binExp         -- Não tem como avaliar, só retorno a exp
+
+-- Lógica de avaliação de uma expressão
+-- Usado só para avaliação de inteiros e constantes na otimização
+tryEval :: Exp -> Exp
+tryEval exp =
+  let resultR = runStateT (eval exp) ([], []) -- Usa o runState para aplicar o eval no exp
+   in case resultR of
+        OK (v1, env) -> wrapValueExpression v1 -- Se eval deu certo, transformo o Valor computado em Exp para manter a estrutura do programa
+        Erro _ -> exp
+
+-- Funções auxiliares mantidas inalteradas
 isLiteral :: Exp -> Bool
 isLiteral exp = case exp of
   EStr _ -> True
@@ -61,16 +67,3 @@ wrapValueExpression (ValorInt i) = EInt i
 wrapValueExpression (ValorStr s) = EStr s
 wrapValueExpression (ValorBool True) = ETrue
 wrapValueExpression (ValorBool False) = EFalse
-
-combOptimize :: (Exp -> Exp -> Exp) -> Exp -> Exp -> Exp
-combOptimize expBinConst exp0 exp1 =
-  let optExp0 = optimizeE exp0
-      optExp1 = optimizeE exp1
-      optBinExp = expBinConst optExp0 optExp1
-   in if isLiteral optExp0 && isLiteral optExp1
-        then
-          let resultR = runStateT (eval optBinExp) ([], [])
-           in case resultR of
-                OK (v1, env) -> wrapValueExpression v1
-                Erro _ -> ENot optBinExp
-        else optBinExp

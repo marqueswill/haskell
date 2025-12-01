@@ -9,15 +9,15 @@ module AbsLF where
 import Prelude (Integer, String)
 import qualified Prelude as C (Eq, Ord, Show, Read)
 import qualified Data.String
-
+import Data.Data
 data Program = Prog [Function]
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
+  deriving (C.Eq, C.Ord, C.Show, C.Read,Data, Typeable)
 
 data Function = Fun Type Ident [Decl] Exp
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
+  deriving (C.Eq, C.Ord, C.Show, C.Read,Data, Typeable)
 
 data Decl = Dec Type Ident
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
+  deriving (C.Eq, C.Ord, C.Show, C.Read,Data, Typeable)
 
 data Exp
     = EIf Exp Exp Exp
@@ -35,11 +35,11 @@ data Exp
     | EStr String
     | ETrue
     | EFalse
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
+  deriving (C.Eq, C.Ord, C.Show, C.Read,Data, Typeable)
 
 data Type = Tbool | Tint | TStr | TFun Type [Type]
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
+  deriving (C.Eq, C.Ord, C.Show, C.Read,Data, Typeable)
 
 newtype Ident = Ident String
-  deriving (C.Eq, C.Ord, C.Show, C.Read, Data.String.IsString)
+  deriving (C.Eq, C.Ord, C.Show, C.Read, Data.String.IsString ,Data, Typeable)
 

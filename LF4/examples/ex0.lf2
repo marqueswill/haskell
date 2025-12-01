@@ -1,4 +1,4 @@
-int main() {
-    if (10-10) then 100 else 0-100
+bool main() {
+    if (0) then true else !false
 }
 

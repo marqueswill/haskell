@@ -1,9 +1,9 @@
 module Typechecker where
 
 import AbsLF
+import Auxiliar
 import PrintLF
 import Prelude hiding (lookup)
-import Auxiliar
 
 type TContext = [(Ident, Type)]
 
@@ -66,31 +66,19 @@ tinf tc x = case x of
       then OK tExpT
       else Erro ("tipos das expressoes do IF na expressao: " ++ printTree eIf)
   ECall id lexp ->
-    let r = lookup tc id
-     in case r of
-          OK (TFun tR pTypes) ->
-            if length pTypes == length lexp
-              then
-                if isThereError tksArgs /= []
-                  then Erro " @typechecker: chamada de funcao invalida"
-                  else OK tR
-              else Erro " @typechecker: tamanhos diferentes de lista de argumentos e parametros"
-            where
-              tksArgs = zipWith (tke tc) lexp pTypes
-              isThereError l =
-                filter
-                  not
-                  ( map
-                      ( \e ->
-                          ( let r2 = e
-                             in case r2 of
-                                  OK _ -> True
-                                  Erro _ -> False
-                          )
-                      )
-                      l
-                  )
-          Erro msg -> Erro msg
+    case lookup tc id of
+      Erro msg -> Erro msg
+      OK (TFun tR pTypes)
+        | length pTypes /= length lexp ->
+            Erro " @typechecker: tamanhos diferentes de lista de argumentos e parametros"
+        | any isErro tksArgs ->
+            Erro " @typechecker: chamada de funcao invalida"
+        | otherwise -> OK tR
+        where
+          tksArgs = zipWith (tke tc) lexp pTypes
+
+          isErro (Erro _) = True
+          isErro _ = False
 
 combChecks :: TContext -> Exp -> Exp -> Type -> R Type
 combChecks tc exp1 exp2 tp = do
