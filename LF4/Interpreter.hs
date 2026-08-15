@@ -1,164 +1,113 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Redundant bracket" #-}
-{-# HLINT ignore "Use foldl" #-}
 module Interpreter where
 
 import AbsLF
+import AbsLF (Exp (EDiv), Ident)
 import AbsLFAux
+import Auxiliar
+import Control.Monad (Monad (return))
+import Control.Monad.Except (MonadError (throwError)) -- Necessário para 'throwError' se for usar R a como base
+import Control.Monad.State (StateT, get, put, runStateT)
+import Control.Monad.Trans (lift) -- Necessário para usar 'lift' e subir o erro
 import Prelude hiding (lookup)
 
-
-
-executeP :: Program -> Valor
-executeP (Prog fs) = eval (updatecF [] fs) (expMain fs)
+executeP :: Program -> R (Valor, Enviroment)
+executeP (Prog fs) = runStateT (eval (expMain fs)) initialEnv
   where
+    initialContext = updatecF [] fs
+    initialMemory = []
+    initialEnv = (initialContext, initialMemory)
+
+    -- Função auxiliar para encontrar a expressão da função 'main'
     expMain (f : xs)
-      | (getName f == (Ident "main")) = getExp f
-      | otherwise = expMain xsimport GHC.Generics qualified as C (Generic)
+      | getName f == Ident "main" = getExp f
+      | otherwise = expMain xs
 
-type RContext = [(Ident, Valor)]
+type EnvState a = StateT Enviroment R a -- Monad de estado
 
-eval :: RContext -> Exp -> Valor
-eval context x = case x of
-  ECon exp0 exp -> ValorStr (s (eval context exp0) ++ s (eval context exp))
-  EAdd exp0 exp -> ValorInt (i (eval context exp0) + i (eval context exp))
-  ESub exp0 exp -> ValorInt (i (eval context exp0) - i (eval context exp))
-  EMul exp0 exp -> ValorInt (i (eval context exp0) * i (eval context exp))
-  EDiv exp0 exp -> ValorInt (i (eval context exp0) `div` i (eval context exp))
-  EOr exp0 exp -> ValorBool (b (eval context exp0) || b (eval context exp))
-  EAnd exp0 exp -> ValorBool (b (eval context exp0) && b (eval context exp))
-  ENot exp -> ValorBool (not (b (eval context exp)))
-  EStr str -> ValorStr str
-  ETrue -> ValorBool True
-  EFalse -> ValorBool False
-  EInt n -> ValorInt n
-  EVar id -> lookup context id
-  EIf exp expT expE ->
-    if (i (eval context exp) /= 0)
-      then eval context expT
-      else eval context expE
-  lambda@(ELambda params exp) -> ValorFun lambda
-  EComp exp1 exp2 ->
-    let (ValorFun exp1') = eval context exp1
-        (ValorFun exp2') = eval context exp2
-        ecallCompResult = ECall exp1' [ECall exp2' (getParamsExpL exp2')]
-     in ValorFun (ELambda (getParamsTypesL exp2') ecallCompResult)
-  ECall exp lexp ->
-    if (length lexp < length parameters)
-      then
-        ValorFun (ELambda params' exp')
-      else
-        eval (paramBindings ++ contextFunctions) exp'
-    where
-      (ValorFun lambda) = eval context exp
-      parameters = getParamsL lambda
-      paramBindings = zip parameters (map (eval context) lexp)
-      contextFunctions =
-        filter
-          ( \(i, v) -> case v of
-              ValorFun _ -> True
-              _ -> False
-          )
-          context
+type EvalM = EnvState Valor
 
-      params' = drop (length lexp) (getParamsTypesL lambda)
-      exp' = subst paramBindings (getExpL lambda)
+eval :: Exp -> EnvState Valor
+eval x = case x of
+  EStr str -> return (ValorStr str)
+  ETrue -> return (ValorBool True)
+  EFalse -> return (ValorBool False)
+  EInt n -> return (ValorInt n)
+  EVar id -> do
+    (context, mem) <- get
+    let v = lookup context id
+    return v
+  EAdd exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 + i v2))
+  ESub exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 - i v2))
+  EMul exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 * i v2))
+  EDiv exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorInt (i v1 `div` i v2))
+  EOr exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorBool (b v1 || b v2))
+  EAnd exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorBool (b v1 && b v2))
+  ECon exp0 exp -> do
+    v1 <- eval exp0
+    v2 <- eval exp
+    return (ValorStr (s v1 ++ s v2))
+  ENot exp -> do
+    v1 <- eval exp
+    return (ValorBool (not (b v1)))
+  EIf exp expT expE -> do
+    cond <- eval exp
+    case cond of
+      ValorInt v ->
+        if v /= 0
+          then eval expT -- Se verdadeiro (diferente de 0), avalia e retorna expT
+          else eval expE -- Se falso (igual a 0), avalia e retorna expE
+  ECall id lexp -> do
+    -- 1. Antes de tudo faço avaliação dos args
+    argValues <- mapM eval lexp -- Usa  o mapM (map monad) para avaliar a lista de argumentos
+    (currentCtx, currentMem) <- get -- Salva o contexto e a memórias antes de entrar no escopo da chamada
 
--- subst :: RContext -> Exp -> Exp
--- subst rc exp = case exp of
---   EVar id -> bind id rc
---   lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
---   ECall exp lexp -> ECall (subst rc exp) (map (subst rc) lexp)
---   EAdd exp0 exp -> EAdd (subst rc exp0) (subst rc exp)
---   EComp exp1 exp2 -> EComp (subst rc exp1) (subst rc exp2)
---   EIf expC expT expE -> EIf (subst rc expC) (subst rc expT) (subst rc expE)
---   ECon exp0 exp -> ECon (subst rc exp0) (subst rc exp)
---   ESub exp0 exp -> ESub (subst rc exp0) (subst rc exp)
---   EMul exp0 exp -> EMul (subst rc exp0) (subst rc exp)
---   EDiv exp0 exp -> EDiv (subst rc exp0) (subst rc exp)
---   EOr exp0 exp -> EOr (subst rc exp0) (subst rc exp)
---   EAnd exp0 exp -> EAnd (subst rc exp0) (subst rc exp)
---   ENot exp -> ENot (subst rc exp)
---   _ -> exp
+    -- 2. Verificação do cache
+    case lookupECallLog currentMem id argValues of -- Primeiro verifica se a função já foi chamada com os argumentos fornecidos
+      Just val -> return val -- Encontrou na memória, só retorno
+      Nothing -> do
+        -- 3. Construção do contexto para chamada
+        let (ValorFun funDef) = lookup currentCtx id
+        let parameters = getParams funDef
+        let contextFunctions = filter (\(_, v) -> case v of ValorFun _ -> True; _ -> False) currentCtx
+        let paramBindings = zip parameters argValues -- Associo cada id a seu valor
+        let newContext = paramBindings ++ contextFunctions -- Contexto local para chamada da função
 
-replaceVar :: RContext -> Exp -> Exp
-replaceVar rc (EVar id) = bind id rc
-replaceVar _ exp = exp
+        -- 4. Troca de contexto
+        put (newContext, currentMem) -- Troco para o contexto da chamada de função
+        resultVal <- eval (getExp funDef) -- Faço eval da função
 
+        -- 5. Atualização da Memória e Restauração do Contexto
+        (_, memAfterBody) <- get -- Pego a nova memória
+        let finalMem = updateECallMem memAfterBody id argValues resultVal -- Salvo a nova chamada de função feita na memória
+        put (currentCtx, finalMem) -- Saio do contexto de chamada de função
+        return resultVal -- Retorno o valor da chamada
 
-subst :: RContext -> Exp -> Exp
-subst rc exp = case exp of
-  lambda@(ELambda paramsTypes exp) -> ELambda paramsTypes (subst (rc `diff` (getParamsL lambda)) exp)
-  _ -> everywhere (mkT (replaceVar rc)) exp
-
-{- TODO:
-  Sobre a implementacao finalizada de subst:
-  1) Qual eh o caso base?
-    O caso base são as expressões literais (EInt, EStr, ETrue, EFalse)
-    onde não há variáveis para substituir.
-
-  2) Como descrever o número de casos recursivos? Depende (in)diretamente de algo?
-    Depende diretamente da estrutura da expressão. Cada construtor de expressão que contém sub-expressões (como EAdd, EIf, ECall, etc.)
-    requer um caso recursivo para processar essas sub-expressões.
-
-  3) Qual a finalidade dos casos recursivos?
-    Processar e substituir variáveis em todas as sub-expressões de uma expressão composta.
-
-  4) Por que a linha 82 eh diferente dos outros casos recursivos?
-    Porque em uma expressão lambda, os parâmetros da função são variáveis ligadas que não devem ser substituídas.
-    Portanto, ao processar o corpo da lambda, removemos essas variáveis do contexto de substituição usando a função diff.
-
-  5) Numa especificacao textual intuitiva e concisa (semelhante ao comentario na linha 76),
-  qual a linha mais importante entre 80-84?
-    Entre o Evar, o Ecall e o Elambda, a linha mais importante é a do EVar porque é o caso base da substituição,
-    onde a variável é efetivamente substituída pelo valor associado no contexto.
-    "No caso EVar, substitui-se a variável pelo seu valor associado no contexto de substituição (RContext)."
-
-  6) Ha semelhanca de implementacao em relacao ao Optimizer.hs? Qual(is)?
-    Ambos utilizam recursão para processar a estrutura da expressão.
-    Ambos possuem casos base para expressões literais.
--}
-
--- a função "diff" faz a diferença, tirando de RContext os mapeamentos envolvendo [Ident].
-diff :: RContext -> [Ident] -> RContext
-rc `diff` [] = rc
-[] `diff` _ = []
-((k, v) : kvs) `diff` (id : ids)
-  | k == id = kvs `diff` ids
-  | otherwise = (k, v) : (kvs `diff` (id : ids))
-
--- a função bind retorna uma expressao contendo o valor do id no RContext, ou o proprio id.
-{- TODO: por que nao usamos o lookup no lugar de bind? ==> Porque o lookup retorna apenas o valor associado ao id fornecido,
-                                                           enquanto o bind retorna a expressão com o valor associado ao id empacotado,
-                                                           ou o próprio id se não estiver no contexto passado. -}
-bind :: Ident -> RContext -> Exp
-bind id [] = EVar id -- retorna o proprio id se ele nao esta ligado em RContext
-bind id ((k, v) : kvs)
-  | k == id = wrapValueExpression v
-  | otherwise = bind id kvs
-
--- "wrapValueExpression" empacota um valor em uma expressao
-wrapValueExpression :: Valor -> Exp
-wrapValueExpression (ValorInt i) = EInt i
-wrapValueExpression (ValorStr s) = EStr s
-wrapValueExpression (ValorBool True) = ETrue
-wrapValueExpression (ValorBool False) = EFalse
-wrapValueExpression (ValorFun exp) = exp
+-- *** @dica: nao altere o todo o codigo abaixo a partir daqui
 
 data Valor
-  = ValorInt
-      { i :: Integer
-      }
-  | ValorFun
-      { f :: Exp
-      }
-  | ValorStr
-      { s :: String
-      }
-  | ValorBool
-      { b :: Bool
-      }
+  = ValorInt {i :: Integer}
+  | ValorFun {f :: Function}
+  | ValorStr {s :: String}
+  | ValorBool {b :: Bool}
+  deriving (Eq)
 
 instance Show Valor where
   show (ValorBool b) = show b
@@ -166,24 +115,52 @@ instance Show Valor where
   show (ValorStr s) = s
   show (ValorFun f) = show f
 
+type RContext = [(Decl, Valor)] -- Contexto de execução: associa Decl (tipo e id) a Valor
+
+type ECallResults = [([Valor], Valor)] -- Lista de parâmetros e o resultado da chamada
+
+type ECallLog = (Ident, ECallResults) -- Id do resultado de cada chamada para um dado args
+
+type ECallMem = [ECallLog]
+
+type Enviroment = (RContext, ECallMem)
+
+lookupECallLog :: ECallMem -> Ident -> [Valor] -> Maybe Valor
+lookupECallLog [] _ _ = Nothing
+lookupECallLog ((idLog, results) : logs) id args
+  | id == idLog = getECallResult results args
+  | otherwise = lookupECallLog logs id args
+
+getECallResult :: ECallResults -> [Valor] -> Maybe Valor
+getECallResult [] _ = Nothing
+getECallResult ((args, result) : logs) args'
+  | args == args' = Just result
+  | otherwise = getECallResult logs args'
+
+-- Primeiro eu encontro os logs para a função
+-- Em seguida eu chamo a função updateResults para atualizar o log
+updateECallMem :: ECallMem -> Ident -> [Valor] -> Valor -> ECallMem
+updateECallMem [] id args res = [(id, [(args, res)])]
+updateECallMem ((idLog, results) : logs) id args res
+  | id == idLog = (id, updateResults results args res) : logs
+  | otherwise = (idLog, results) : updateECallMem logs id args res
+
+updateResults :: ECallResults -> [Valor] -> Valor -> ECallResults
+updateResults [] args' res' = [(args', res')]
+updateResults ((args, res) : xs) args' res'
+  | args == args' = (args, res) : xs
+  | otherwise = (args, res) : updateResults xs args' res'
+
 lookup :: RContext -> Ident -> Valor
-lookup ((i, v) : cs) s
+lookup ((Dec t i, v) : cs) s
   | i == s = v
   | otherwise = lookup cs s
 
-update :: RContext -> Ident -> Valor -> RContext
+update :: RContext -> Decl -> Valor -> RContext --
 update [] s v = [(s, v)]
-update ((i, v) : cs) s nv
-  | i == s = (i, nv) : cs
-  | otherwise = (i, v) : update cs s nv
+update ((d, v) : cs) s nv
+  | d == s = (d, nv) : cs -- Se encontrar o decl (tp,id), atualiza o valor
+  | otherwise = (d, v) : update cs s nv -- Senão, continua procurando
 
 updatecF :: RContext -> [Function] -> RContext
-updatecF c [] = c
-updatecF c (f : fs) =
-  updatecF
-    ( update
-        c
-        (getName f)
-        (ValorFun (ELambda (getParams f) (getExp f)))
-    )
-    fs
+updatecF = foldl (\c f -> update c (getDecl f) (ValorFun f)) -- Percorre a lista de funções, atualizando o contexto com cada função e seu valor (ValorFun)

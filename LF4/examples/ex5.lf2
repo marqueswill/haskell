@@ -1,14 +1,14 @@
 
 int main () {
-   if (1) 
-   then
-      fat (5+1)
-   else 
-      0
+   fat (10)
 }
 
 int fat (int n) {
  if (n)
     then n * fat (n-1)
     else 1
+
 }
+
+
+

@@ -1,7 +1,0 @@
-int soma (int a , int b, int c) {
-  a + b * c
-}
-
-int main() {
-   (soma (2)) (3, 2)
-}

@@ -1,0 +1,4 @@
+bool main() {
+    if (0) then true else !false
+}
+

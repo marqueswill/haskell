@@ -12,23 +12,17 @@ Nota��o:
   => arquivo "Interpreter.hs"
 
 3) compilar o driver (main) do interpretador 
-  ==> ghc --make Interpret.hs
+  ==> ghc -package array -package mtl --make Interpret.hs
 
 4) testar o executável com exemplos:
-  Linux:
-  ==> ./Interpret < examples/ex1.lf3
-  ==> for f in examples/*.lf3; do ./Interpret < $f; done
-
-  Windows:
-  ==> Get-Content examples/ex1.lf3 | .\Interpret.exe
-  ==> Get-ChildItem -Path examples/ -Filter *.lf3 | ForEach-Object { Get-Content -Path $_.FullName | .\Interpret.exe }
+  ==> ./Interpret < examples/ex1.lf2
 
 ** Passos preliminares (feito pelo professor)
 -3) Definir/editar a sintaxe concreta (feito pelo professor)
-  ==> arquivo LF3.cf
+  ==> arquivo LF4.cf
 
 -2) Gerar os fontes do analisador sint�tico (parser) e l�xico (lexer), assim como o Makefile usando o BNF Converter
-  ==> bnfc --generic -m  LF3.cf
+  ==> bnfc  -m  LF4.cf
 
 -1) Compilar os fontes do parser e lexer 
   ==> make
@@ -41,9 +35,9 @@ Nota��o:
 
 Observa��es
 
--> O arquivo "AbsLI.hs" � gerado a partir do arquivo "LI2.cf". Assim, caso o �ltimo seja editado, o primeiro ter� que ser gerado
+-> O arquivo "AbsLI.hs" � gerado a partir do arquivo "LI4.cf". Assim, caso o �ltimo seja editado, o primeiro ter� que ser gerado
 novamente. Para fazer altera��es desejadas no arquivo "AbsLI.hs", o mesmo n�o deve ser editado diretamente: 
-deve-se alterar o "LI2.cf" e gerar o "AbsLI.hs" novamente usando o BNF Converter.
+deve-se alterar o "LI4.cf" e gerar o "AbsLI.hs" novamente usando o BNF Converter.
 
 -> Para a execu��o dos "Passos Principais", � necess�rio ter a plataforma Haskell instalada.
 https://www.haskell.org/platform/

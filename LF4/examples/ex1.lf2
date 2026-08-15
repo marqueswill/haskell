@@ -7,5 +7,5 @@ int quadruple(int y) {
 }
 
 int main() {
-  quadruple(3)
+  quadruple(5 + 3 + 2)
 }
